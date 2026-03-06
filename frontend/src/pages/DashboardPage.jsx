@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, SmartPhone, CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle } from 'lucide-react';
 import { getAppointments, getWhatsAppStatus, startWhatsAppConnection } from '../api';
 
 const DashboardPage = () => {
@@ -187,7 +187,7 @@ const DashboardPage = () => {
 
                         <div className="card glass-panel" style={{ maxWidth: '600px' }}>
                             <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <SmartPhone size={24} color="var(--accent-primary)" /> Conexión con WhatsApp
+                                <Smartphone size={24} color="var(--accent-primary)" /> Conexión con WhatsApp
                             </h3>
 
                             <div style={{ textAlign: 'center', padding: '20px 0' }}>
