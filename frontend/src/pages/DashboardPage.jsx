@@ -1,0 +1,148 @@
+import { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut } from 'lucide-react';
+import { getAppointments } from '../api';
+
+const DashboardPage = () => {
+    const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats'
+    const [appointments, setAppointments] = useState([]);
+
+    // Derived stats
+    const todayAppointments = appointments.length;
+    const completedAppointments = appointments.filter(a => a.status === 'completed').length;
+    const pendingAppointments = appointments.filter(a => a.status === 'scheduled').length;
+    const todayRevenue = appointments.filter(a => a.status === 'completed').reduce((sum, a) => sum + a.price, 0);
+
+    useEffect(() => {
+        getAppointments().then(data => {
+            setAppointments(data);
+        }).catch(err => console.error(err));
+    }, []);
+
+    const logout = () => {
+        window.location.href = '/login';
+    };
+
+    return (
+        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+            {/* Sidebar */}
+            <aside style={{ width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+                <h2 style={{ color: 'var(--accent-primary)', marginBottom: '40px', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Scissors /> Royal Panel
+                </h2>
+
+                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'calendar' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            color: activeTab === 'calendar' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <CalendarIcon size={20} /> Turnos de Hoy
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'stats' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            color: activeTab === 'stats' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <DollarSign size={20} /> Ganancias
+                    </button>
+                </nav>
+
+                <button
+                    onClick={logout}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--error)', padding: '15px', fontWeight: '500' }}
+                >
+                    <LogOut size={20} /> Cerrar Sesión
+                </button>
+            </aside>
+
+            {/* Main Content */}
+            <main style={{ flex: 1, padding: '40px' }}>
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '2rem', marginBottom: '5px' }}>Hola, <span style={{ color: 'var(--accent-primary)' }}>Juampi</span></h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>Te esperan {pendingAppointments} cortes para hoy.</p>
+                    </div>
+                    <div style={{ padding: '10px 20px', backgroundColor: 'var(--bg-secondary)', borderRadius: '30px', fontWeight: 'bold' }}>
+                        {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                </header>
+
+                {activeTab === 'calendar' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Clock color="var(--accent-primary)" /> Próximos Cortes
+                        </h2>
+                        <div style={{ display: 'grid', gap: '15px' }}>
+                            {appointments.map(app => (
+                                <div key={app.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        <div style={{ width: '80px', textAlign: 'center' }}>
+                                            <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', display: 'block' }}>{app.appointmentTime}</span>
+                                            <small style={{ color: 'var(--accent-primary)' }}>{app.appointmentDate}</small>
+                                        </div>
+                                        <div style={{ width: '1px', height: '50px', backgroundColor: 'rgba(255,255,255,0.1)' }}></div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.2rem', marginBottom: '5px' }}>{app.clientName}</h3>
+                                            <p style={{ color: 'var(--accent-primary)' }}>{app.serviceName}</p>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                                            ${app.price}
+                                        </div>
+                                        <span style={{
+                                            padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
+                                            backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : 'rgba(218, 165, 32, 0.1)',
+                                            color: app.status === 'completed' ? 'var(--success)' : 'var(--accent-primary)'
+                                        }}>
+                                            {app.status === 'completed' ? 'Completado' : 'Pendiente'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'stats' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <DollarSign color="var(--accent-primary)" /> Resumen del Día
+                        </h2>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                            <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(218, 165, 32, 0.1)', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <DollarSign size={24} color="var(--accent-primary)" />
+                                </div>
+                                <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ganancias de Hoy</h3>
+                                <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>${todayRevenue}</div>
+                            </div>
+
+                            <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.05)', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Users size={24} color="var(--text-primary)" />
+                                </div>
+                                <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Total de Clientes</h3>
+                                <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{todayAppointments}</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </main>
+        </div>
+    );
+};
+
+export default DashboardPage;
