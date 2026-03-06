@@ -15,7 +15,6 @@ const whatsappClient = new Client({
             '--single-process', // Importante para entornos con bajos recursos como el plan gratuito de Render
             '--disable-gpu'
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null, // Vía para indicar la ruta de Chromium en Render
         headless: true
     }
 });

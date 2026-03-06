@@ -17,10 +17,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
 const PORT = process.env.PORT || 5000;
 
-// Configuración de la Base de Datos con soporte para volumen persistente de Render
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'database.sqlite');
+// FORZAMOS LA DB AL DIRECTORIO LOCAL DE RENDER PARA EVITAR ERROR /data
+const dbPath = path.resolve(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
