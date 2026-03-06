@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut } from 'lucide-react';
-import { getAppointments } from '../api';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, SmartPhone, CheckCircle } from 'lucide-react';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection } from '../api';
 
 const DashboardPage = () => {
-    const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats'
+    const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
     const [appointments, setAppointments] = useState([]);
+
+    // WhatsApp State
+    const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
+    const [loadingWa, setLoadingWa] = useState(false);
 
     // Derived stats
     const todayAppointments = appointments.length;
@@ -17,6 +21,29 @@ const DashboardPage = () => {
             setAppointments(data);
         }).catch(err => console.error(err));
     }, []);
+
+    // Polling WhatsApp Status when in Config Tab
+    useEffect(() => {
+        let interval;
+        if (activeTab === 'config') {
+            checkWaStatus(); // Check immediately
+            interval = setInterval(checkWaStatus, 3000); // Check every 3 seconds
+        }
+        return () => clearInterval(interval);
+    }, [activeTab]);
+
+    const checkWaStatus = async () => {
+        const status = await getWhatsAppStatus();
+        setWaStatus(status);
+        if (status.ready || status.qrUrl) {
+            setLoadingWa(false);
+        }
+    };
+
+    const handleStartWhatsApp = async () => {
+        setLoadingWa(true);
+        await startWhatsAppConnection();
+    };
 
     const logout = () => {
         window.location.href = '/login';
@@ -54,6 +81,18 @@ const DashboardPage = () => {
                         }}
                     >
                         <DollarSign size={20} /> Ganancias
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('config')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'config' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            color: activeTab === 'config' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Settings size={20} /> Configuración
                     </button>
                 </nav>
 
@@ -135,6 +174,57 @@ const DashboardPage = () => {
                                 </div>
                                 <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Total de Clientes</h3>
                                 <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{todayAppointments}</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'config' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Settings color="var(--accent-primary)" /> Configuración
+                        </h2>
+
+                        <div className="card glass-panel" style={{ maxWidth: '600px' }}>
+                            <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <SmartPhone size={24} color="var(--accent-primary)" /> Conexión con WhatsApp
+                            </h3>
+
+                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                {waStatus.ready ? (
+                                    <div className="animate-fade-in">
+                                        <CheckCircle size={60} color="var(--success)" style={{ margin: '0 auto 15px' }} />
+                                        <h2 style={{ color: 'var(--success)' }}>¡Sincronización Exitosa!</h2>
+                                        <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>Tu bot de WhatsApp está conectado y listo para mandar mensajes de forma automática a tus clientes.</p>
+                                    </div>
+                                ) : (
+                                    <div className="animate-fade-in">
+                                        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                                            Vinculá tu WhatsApp para que el sistema mande mensajes automáticos de confirmación y recordatorios de turnos.
+                                        </p>
+
+                                        {!loadingWa && !waStatus.qrUrl && (
+                                            <button
+                                                onClick={handleStartWhatsApp}
+                                                className="btn-primary"
+                                                style={{ width: 'auto', padding: '12px 30px' }}
+                                            >
+                                                Vincular WhatsApp (Abrir código QR)
+                                            </button>
+                                        )}
+
+                                        {loadingWa && !waStatus.qrUrl && (
+                                            <p style={{ color: 'var(--accent-primary)' }}>Generando enlace seguro con WhatsApp... Por favor, esperá.</p>
+                                        )}
+
+                                        {waStatus.qrUrl && !waStatus.ready && (
+                                            <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '15px', display: 'inline-block', margin: '20px auto' }}>
+                                                <img src={waStatus.qrUrl} alt="WhatsApp QR Code" style={{ width: '250px', height: '250px', display: 'block' }} />
+                                                <p style={{ color: '#000', fontWeight: 'bold', marginTop: '10px' }}>Escaneá este código desde tu celular</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

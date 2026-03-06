@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
-const { sendWhatsAppMessage, isReady } = require('./whatsappService');
+const { sendWhatsAppMessage, isReady, startWhatsApp, getQrData } = require('./whatsappService');
 const bcrypt = require('bcrypt'); // Añado bcrypt
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
@@ -219,6 +219,19 @@ app.put('/api/appointments/:id/status', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });
+});
+
+// WHATSAPP CONTROL ENDPOINTS
+app.get('/api/whatsapp/status', (req, res) => {
+    res.json({
+        ready: isReady(),
+        qrUrl: getQrData()
+    });
+});
+
+app.post('/api/whatsapp/start', (req, res) => {
+    startWhatsApp(true); // Forzar reinicio si pide conectarse de nuevo
+    res.json({ success: true, message: "Intentando conectar o generar QR" });
 });
 
 cron.schedule('* * * * *', () => {

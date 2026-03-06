@@ -1,64 +1,67 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const pino = require('pino');
+const qrcode = require('qrcode');
 
-// Initialize WhatsApp client with LocalAuth to persist session
-const whatsappClient = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process', // Importante para entornos con bajos recursos como el plan gratuito de Render
-            '--disable-gpu'
-        ],
-        headless: true
-    }
-});
-
+let whatsappClient = null;
 let isWhatsAppReady = false;
+let currentQrBase64 = null;
 
-whatsappClient.on('qr', (qr) => {
-    // Generate and scan this code with your phone
-    console.log('\n--- ESCANEA EL SIGUIENTE CÓDIGO QR EN TU WHATSAPP ---');
-    qrcode.generate(qr, { small: true });
-    console.log('----------------------------------------------------\n');
-});
+async function startWhatsApp(forceReconnect = false) {
+    if (isWhatsAppReady && !forceReconnect) return;
 
-whatsappClient.on('ready', () => {
-    console.log('✅ Sistema de WhatsApp automatizado (WhatsApp-web.js beta) está LISTO.');
-    isWhatsAppReady = true;
-});
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
-whatsappClient.on('auth_failure', msg => {
-    console.error('❌ Error de Autenticación de WhatsApp:', msg);
-});
+        whatsappClient = makeWASocket({
+            auth: state,
+            printQRInTerminal: true,
+            logger: pino({ level: 'silent' })
+        });
 
-whatsappClient.on('disconnected', (reason) => {
-    console.log('❌ WhatsApp Desconectado. Razón:', reason);
-    isWhatsAppReady = false;
-});
+        whatsappClient.ev.on('creds.update', saveCreds);
 
-whatsappClient.initialize();
+        whatsappClient.ev.on('connection.update', async (update) => {
+            const { connection, qr } = update;
+
+            if (qr) {
+                console.log('Generando QR para el frontend...');
+                currentQrBase64 = await qrcode.toDataURL(qr);
+                isWhatsAppReady = false;
+            }
+
+            if (connection === 'open') {
+                console.log('✅ Sistema de WhatsApp automatizado (Baileys) está LISTO.');
+                isWhatsAppReady = true;
+                currentQrBase64 = null;
+            }
+
+            if (connection === 'close') {
+                console.log('❌ WhatsApp Desconectado.');
+                isWhatsAppReady = false;
+                currentQrBase64 = null;
+            }
+        });
+    } catch (error) {
+        console.error("Error iniciando WhatsApp: ", error);
+        isWhatsAppReady = false;
+    }
+}
+
+// Iniciar al arrancar el servidor
+startWhatsApp();
 
 /**
  * Función para enviar un mensaje de WhatsApp a un número
- * @param {string} to - Número de teléfono en formato internacional sin el + (Ej: 5491112345678)
- * @param {string} message - El mensaje a enviar
  */
 const sendWhatsAppMessage = async (to, message) => {
-    if (!isWhatsAppReady) {
+    if (!isWhatsAppReady || !whatsappClient) {
         console.log(`[WhatsApp OMITIDO - Sistema no listo] Mensaje a ${to}: ${message}`);
         return false;
     }
 
     try {
-        // Formatear el número para whatsapp-web.js format (añadir @c.us)
-        const chatId = `${to}@c.us`;
-        await whatsappClient.sendMessage(chatId, message);
+        const jid = `${to}@s.whatsapp.net`;
+        await whatsappClient.sendMessage(jid, { text: message });
         console.log(`✉️ WhatsApp enviado exitosamente a ${to}`);
         return true;
     } catch (error) {
@@ -70,5 +73,7 @@ const sendWhatsAppMessage = async (to, message) => {
 module.exports = {
     whatsappClient,
     sendWhatsAppMessage,
-    isReady: () => isWhatsAppReady
+    startWhatsApp,
+    isReady: () => isWhatsAppReady,
+    getQrData: () => currentQrBase64
 };
