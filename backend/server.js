@@ -92,6 +92,10 @@ app.post('/api/auth/login', (req, res) => {
     db.get('SELECT * FROM users WHERE phone = ?', [phone], async (err, user) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+        // Si la contraseña guardada es literalmente '123456' sin encriptar (por la bd vieja)
+        if (user.password === password) {
+            return res.json({ id: user.id, name: user.name, role: user.role });
+        }
 
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(401).json({ error: 'Invalid credentials' });
