@@ -10,39 +10,44 @@ async function startWhatsApp(forceReconnect = false) {
     if (isWhatsAppReady && !forceReconnect) return;
 
     try {
+        // Carpeta donde se guardan las credenciales para no pedir QR una vez escaneado
         const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
         whatsappClient = makeWASocket({
             auth: state,
-            printQRInTerminal: true,
-            logger: pino({ level: 'silent' })
+            printQRInTerminal: true, // Imprime en consola para logs tras bambalinas
+            logger: pino({ level: 'silent' }) // Mantiene la consola de Render o local limpia sin exceso de logs
         });
 
+        // Guardar las claves si Baileys las actualiza automáticamente
         whatsappClient.ev.on('creds.update', saveCreds);
 
+        // Controlar el estado de conexión
         whatsappClient.ev.on('connection.update', async (update) => {
             const { connection, qr } = update;
 
             if (qr) {
-                console.log('Generando QR para el frontend...');
+                console.log('🔄 Generando código QR fresco para el panel web...');
+                // Convertir la imagen cruda a una URL en Base64 para que React pueda mostrarla en un <img>
                 currentQrBase64 = await qrcode.toDataURL(qr);
                 isWhatsAppReady = false;
             }
 
             if (connection === 'open') {
-                console.log('✅ Sistema de WhatsApp automatizado (Baileys) está LISTO.');
+                console.log('✅ Sistema de WhatsApp automatizado está 100% ONLINE.');
                 isWhatsAppReady = true;
                 currentQrBase64 = null;
             }
 
             if (connection === 'close') {
-                console.log('❌ WhatsApp Desconectado.');
+                console.log('❌ WhatsApp se ha cerrado o desconectado.');
                 isWhatsAppReady = false;
                 currentQrBase64 = null;
+                // Si la sesión fue borrada o cerrada desde el celular, podríamos vaciar auth_info_baileys
             }
         });
     } catch (error) {
-        console.error("Error iniciando WhatsApp: ", error);
+        console.error("❌ Ocurrió un error al iniciar WhatsApp: ", error);
         isWhatsAppReady = false;
     }
 }
@@ -51,7 +56,7 @@ async function startWhatsApp(forceReconnect = false) {
 startWhatsApp();
 
 /**
- * Función para enviar un mensaje de WhatsApp a un número
+ * Función exportada para enviar un mensaje de WhatsApp
  */
 const sendWhatsAppMessage = async (to, message) => {
     if (!isWhatsAppReady || !whatsappClient) {
@@ -60,8 +65,13 @@ const sendWhatsAppMessage = async (to, message) => {
     }
 
     try {
-        const jid = `${to}@s.whatsapp.net`;
-        await whatsappClient.sendMessage(jid, { text: message });
+        // En Baileys el número debe llevar el sufijo @s.whatsapp.net y sin el signo +
+        let cleanPhone = to.toString().replace(/\D/g, '');
+        if (!cleanPhone.includes('@')) {
+            cleanPhone = `${cleanPhone}@s.whatsapp.net`;
+        }
+
+        await whatsappClient.sendMessage(cleanPhone, { text: message });
         console.log(`✉️ WhatsApp enviado exitosamente a ${to}`);
         return true;
     } catch (error) {
