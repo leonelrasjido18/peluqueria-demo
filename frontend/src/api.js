@@ -44,6 +44,11 @@ export const createAppointment = async (appointmentData) => {
     return response.data;
 };
 
+export const getBookedTimes = async (date) => {
+    const response = await api.get(`/appointments/booked?date=${date}`);
+    return response.data;
+};
+
 export const login = async (phone, password) => {
     const response = await api.post('/auth/login', { phone, password });
     return response.data;

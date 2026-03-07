@@ -264,6 +264,21 @@ app.post('/api/appointments', (req, res) => {
     });
 });
 
+app.get('/api/appointments/booked', (req, res) => {
+    const { date } = req.query;
+    if(!date) return res.status(400).json({ error: 'Date params missing' });
+    
+    const query = `
+        SELECT appointmentTime 
+        FROM appointments 
+        WHERE appointmentDate = ? AND status IN ('scheduled', 'completed', 'pending_payment')
+    `;
+    db.all(query, [date], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows.map(r => r.appointmentTime));
+    });
+});
+
 app.get('/api/appointments', (req, res) => {
     const query = `
         SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status, s.name as serviceName, s.price 

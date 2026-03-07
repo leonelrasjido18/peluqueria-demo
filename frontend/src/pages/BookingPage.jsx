@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Scissors, ChevronRight, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getServices, createAppointment, getSchedules } from '../api';
+import { getServices, createAppointment, getSchedules, getBookedTimes } from '../api';
 
 const BookingPage = () => {
     const navigate = useNavigate();
@@ -17,6 +17,7 @@ const BookingPage = () => {
 
     const [services, setServices] = useState([]);
     const [availableTimes, setAvailableTimes] = useState([]);
+    const [bookedTimes, setBookedTimes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -42,8 +43,22 @@ const BookingPage = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (bookingData.date) {
+            getBookedTimes(bookingData.date)
+                .then(times => setBookedTimes(times))
+                .catch(err => console.error(err));
+        } else {
+            setBookedTimes([]);
+        }
+    }, [bookingData.date]);
+
     const updateData = (key, value) => {
-        setBookingData({ ...bookingData, [key]: value });
+        setBookingData(prev => {
+            const next = { ...prev, [key]: value };
+            if (key === 'date') next.time = '';
+            return next;
+        });
     };
 
     const nextStep = () => setStep(step + 1);
@@ -176,23 +191,28 @@ const BookingPage = () => {
                                     Horarios de Atención
                                 </label>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                                    {availableTimes.map(t => (
-                                        <div
-                                            key={t}
-                                            onClick={() => updateData('time', t)}
-                                            style={{
-                                                padding: '12px', textAlign: 'center', borderRadius: '12px', cursor: 'pointer',
-                                                border: `2px solid ${bookingData.time === t ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
-                                                backgroundColor: bookingData.time === t ? 'var(--accent-primary)' : 'transparent',
-                                                color: bookingData.time === t ? 'var(--text-inverse)' : 'var(--text-primary)',
-                                                fontWeight: '700',
-                                                fontSize: '1rem',
-                                                transition: 'var(--transition)'
-                                            }}
-                                        >
-                                            {t}
-                                        </div>
-                                    ))}
+                                    {availableTimes.sort().map(t => {
+                                        const isBooked = bookedTimes.includes(t);
+                                        return (
+                                            <div
+                                                key={t}
+                                                onClick={() => { if (!isBooked) updateData('time', t) }}
+                                                style={{
+                                                    padding: '12px', textAlign: 'center', borderRadius: '12px', cursor: isBooked ? 'not-allowed' : 'pointer',
+                                                    border: `2px solid ${bookingData.time === t ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
+                                                    backgroundColor: bookingData.time === t ? 'var(--accent-primary)' : 'transparent',
+                                                    color: bookingData.time === t ? 'var(--text-inverse)' : isBooked ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                                    fontWeight: '700',
+                                                    fontSize: '1rem',
+                                                    transition: 'var(--transition)',
+                                                    opacity: isBooked ? 0.3 : 1,
+                                                    textDecoration: isBooked ? 'line-through' : 'none'
+                                                }}
+                                            >
+                                                {t}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
