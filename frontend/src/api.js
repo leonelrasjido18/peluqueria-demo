@@ -64,6 +64,11 @@ export const updateAppointmentStatus = async (id, status) => {
     return response.data;
 };
 
+export const deleteAppointment = async (id) => {
+    const response = await api.delete(`/appointments/${id}`);
+    return response.data;
+};
+
 export const getWhatsAppStatus = async () => {
     try {
         const res = await api.get('/whatsapp/status');

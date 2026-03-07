@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule } from '../api';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -52,6 +52,13 @@ const DashboardPage = () => {
         if(window.confirm('¿Seguro que querés eliminar este horario?')) {
             await deleteSchedule(id);
             loadSchedules();
+        }
+    };
+
+    const handleDeleteAppointmentObj = async (id) => {
+        if(window.confirm('¿Eliminar este turno? (Esto liberará el horario)')) {
+            await deleteAppointment(id);
+            getAppointments().then(data => setAppointments(data));
         }
     };
 
@@ -241,13 +248,22 @@ const DashboardPage = () => {
                                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '10px' }}>
                                             ${app.price}
                                         </div>
-                                        <span style={{
-                                            padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                                            backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : 'rgba(192, 123, 247, 0.1)',
-                                            color: app.status === 'completed' ? 'var(--success)' : 'var(--accent-primary)'
-                                        }}>
-                                            {app.status === 'completed' ? 'Completado' : 'Pendiente'}
-                                        </span>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                            <span style={{
+                                                padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
+                                                backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : app.status === 'pending_payment' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(192, 123, 247, 0.1)',
+                                                color: app.status === 'completed' ? 'var(--success)' : app.status === 'pending_payment' ? '#f59e0b' : 'var(--accent-primary)'
+                                            }}>
+                                                {app.status === 'completed' ? 'Completado' : app.status === 'pending_payment' ? 'Abonando Seña...' : 'Confirmado'}
+                                            </span>
+                                            <button 
+                                                onClick={() => handleDeleteAppointmentObj(app.id)}
+                                                style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                                                title="Eliminar turno"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

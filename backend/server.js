@@ -284,7 +284,6 @@ app.get('/api/appointments', (req, res) => {
         SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status, s.name as serviceName, s.price 
         FROM appointments a
         JOIN services s ON a.serviceId = s.id
-        WHERE a.status != 'pending_payment'
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
     `;
     db.all(query, [], (err, rows) => {
@@ -296,6 +295,13 @@ app.get('/api/appointments', (req, res) => {
 app.put('/api/appointments/:id/status', (req, res) => {
     const { status } = req.body;
     db.run("UPDATE appointments SET status = ? WHERE id = ?", [status, req.params.id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/appointments/:id', (req, res) => {
+    db.run("DELETE FROM appointments WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });
