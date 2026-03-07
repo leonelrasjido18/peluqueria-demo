@@ -39,7 +39,7 @@ const BookingPage = () => {
         try {
             const result = await createAppointment({
                 clientName: bookingData.clientName,
-                clientPhone: bookingData.clientPhone,
+                clientPhone: '+549' + bookingData.clientPhone,
                 serviceId: bookingData.serviceId,
                 appointmentDate: bookingData.date,
                 appointmentTime: bookingData.time
@@ -216,15 +216,29 @@ const BookingPage = () => {
                             </div>
                             <div style={{ marginBottom: '30px' }}>
                                 <label className="input-label">Número de WhatsApp</label>
-                                <input
-                                    type="tel"
-                                    className="input-field"
-                                    placeholder="+54 9 11 1234-5678"
-                                    value={bookingData.clientPhone}
-                                    onChange={(e) => updateData('clientPhone', e.target.value)}
-                                    style={{ padding: '15px', fontSize: '1rem' }}
-                                    required
-                                />
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <span style={{ 
+                                        padding: '15px 15px', 
+                                        backgroundColor: 'var(--bg-tertiary)', 
+                                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                                        borderRight: 'none',
+                                        borderRadius: '8px 0 0 8px',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '1rem',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        +54 9
+                                    </span>
+                                    <input
+                                        type="tel"
+                                        className="input-field"
+                                        placeholder="11 12345678"
+                                        value={bookingData.clientPhone}
+                                        onChange={(e) => updateData('clientPhone', e.target.value.replace(/\\D/g, ''))}
+                                        style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, padding: '15px', fontSize: '1rem', flex: 1 }}
+                                        required
+                                    />
+                                </div>
                                 <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '10px', fontSize: '0.85rem' }}>
                                     Recibirás alertas automatizadas en este número.
                                 </small>
