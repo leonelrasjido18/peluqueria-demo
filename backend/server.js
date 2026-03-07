@@ -281,9 +281,10 @@ app.get('/api/appointments/booked', (req, res) => {
 
 app.get('/api/appointments', (req, res) => {
     const query = `
-        SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status, s.name as serviceName, s.price 
+        SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status, 
+               COALESCE(s.name, 'Servicio Eliminado') as serviceName, COALESCE(s.price, 0) as price 
         FROM appointments a
-        JOIN services s ON a.serviceId = s.id
+        LEFT JOIN services s ON a.serviceId = s.id
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
     `;
     db.all(query, [], (err, rows) => {
