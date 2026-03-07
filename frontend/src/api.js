@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://peluqueria-demo.onrender.com/api',
+    baseURL: import.meta.env.VITE_API_URL || 'http://187.77.234.239:5000/api',
 });
 
 export const getServices = async () => {
