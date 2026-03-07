@@ -75,6 +75,12 @@ function initDatabase() {
             FOREIGN KEY (serviceId) REFERENCES services (id)
         )`);
 
+        // Tabla de Horarios
+        db.run(`CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            time TEXT UNIQUE
+        )`);
+
         // Insertar servicios por defecto si no existen
         db.get("SELECT COUNT(*) AS count FROM services", (err, row) => {
             if (row && row.count === 0) {
@@ -164,6 +170,31 @@ app.delete('/api/services/:id', (req, res) => {
     // Note: We might have appointments tied to this service. We can soft-delete or just handle the error, but for MVP let's allow hard delete assuming caution.
     // Better yet, just delete it.
     db.run("DELETE FROM services WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE HORARIOS
+// ==========================================
+app.get('/api/schedules', (req, res) => {
+    db.all("SELECT * FROM schedules ORDER BY time ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/schedules', (req, res) => {
+    const { time } = req.body;
+    db.run("INSERT OR IGNORE INTO schedules (time) VALUES (?)", [time], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID, time });
+    });
+});
+
+app.delete('/api/schedules/:id', (req, res) => {
+    db.run("DELETE FROM schedules WHERE id = ?", [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });

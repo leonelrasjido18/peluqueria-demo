@@ -24,6 +24,21 @@ export const deleteService = async (id) => {
     return response.data;
 };
 
+export const getSchedules = async () => {
+    const response = await api.get('/schedules');
+    return response.data;
+};
+
+export const addSchedule = async (time) => {
+    const response = await api.post('/schedules', { time });
+    return response.data;
+};
+
+export const deleteSchedule = async (id) => {
+    const response = await api.delete(`/schedules/${id}`);
+    return response.data;
+};
+
 export const createAppointment = async (appointmentData) => {
     const response = await api.post('/appointments', appointmentData);
     return response.data;

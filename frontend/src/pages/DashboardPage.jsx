@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService } from '../api';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -10,6 +10,8 @@ const DashboardPage = () => {
     const [newService, setNewService] = useState({ name: '', duration: '', price: '' });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+    const [schedules, setSchedules] = useState([]);
+    const [newSchedule, setNewSchedule] = useState('');
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -27,10 +29,30 @@ const DashboardPage = () => {
         }).catch(err => console.error(err));
         
         loadServices();
+        loadSchedules();
     }, []);
 
     const loadServices = () => {
         getServices().then(data => setServices(data)).catch(err => console.error(err));
+    };
+
+    const loadSchedules = () => {
+        getSchedules().then(data => setSchedules(data)).catch(err => console.error(err));
+    };
+
+    const handleSaveSchedule = async (e) => {
+        e.preventDefault();
+        if(!newSchedule) return;
+        await addSchedule(newSchedule);
+        setNewSchedule('');
+        loadSchedules();
+    };
+
+    const handleDeleteScheduleObj = async (id) => {
+        if(window.confirm('¿Seguro que querés eliminar este horario?')) {
+            await deleteSchedule(id);
+            loadSchedules();
+        }
     };
 
     const handleSaveService = async (e) => {
@@ -140,6 +162,18 @@ const DashboardPage = () => {
                         }}
                     >
                         <Scissors size={20} /> Servicios
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('schedules'); setIsMobileMenuOpen(false); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'schedules' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'schedules' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Clock size={20} /> Horarios
                     </button>
                     <button
                         onClick={() => { setActiveTab('config'); setIsMobileMenuOpen(false); }}
@@ -320,6 +354,47 @@ const DashboardPage = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'schedules' && (
+                    <div className="animate-fade-in">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                <Clock color="var(--accent-primary)" /> Mis Horarios
+                            </h2>
+                        </div>
+
+                        <div className="card glass-panel" style={{ marginBottom: '30px', maxWidth: '400px' }}>
+                            <h3 style={{ marginBottom: '15px' }}>Agregar Horario</h3>
+                            <form onSubmit={handleSaveSchedule} style={{ display: 'flex', gap: '10px' }}>
+                                <input 
+                                    type="time" 
+                                    className="input-field" 
+                                    value={newSchedule} 
+                                    onChange={(e) => setNewSchedule(e.target.value)} 
+                                    required 
+                                    style={{ flex: 1, padding: '12px' }} 
+                                />
+                                <button type="submit" className="btn-primary" style={{ padding: '0 20px', borderRadius: '8px' }}>
+                                    <Plus size={20} />
+                                </button>
+                            </form>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px' }}>
+                            {schedules.map(s => (
+                                <div key={s.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px' }}>
+                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{s.time}</span>
+                                    <button onClick={() => handleDeleteScheduleObj(s.id)} style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                            {schedules.length === 0 && (
+                                <p style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1' }}>No hay horarios configurados.</p>
+                            )}
+                        </div>
                     </div>
                 )}
 

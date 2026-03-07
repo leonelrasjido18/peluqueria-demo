@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Scissors, ChevronRight, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getServices, createAppointment } from '../api';
-
-const availableTimes = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+import { getServices, createAppointment, getSchedules } from '../api';
 
 const BookingPage = () => {
     const navigate = useNavigate();
@@ -18,13 +16,17 @@ const BookingPage = () => {
     });
 
     const [services, setServices] = useState([]);
+    const [availableTimes, setAvailableTimes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        getServices().then(data => {
-            setServices(data);
-            setIsLoading(false);
-        }).catch(err => console.error(err));
+        Promise.all([getServices(), getSchedules()])
+            .then(([servicesData, schedulesData]) => {
+                setServices(servicesData);
+                setAvailableTimes(schedulesData.map(s => s.time));
+                setIsLoading(false);
+            })
+            .catch(err => console.error(err));
     }, []);
 
     const updateData = (key, value) => {
