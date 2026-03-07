@@ -216,26 +216,29 @@ const BookingPage = () => {
                             </div>
                             <div style={{ marginBottom: '30px' }}>
                                 <label className="input-label">Número de WhatsApp</label>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <span style={{ 
-                                        padding: '15px 15px', 
-                                        backgroundColor: 'var(--bg-tertiary)', 
+                                <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <div style={{ 
+                                        padding: '0 16px', 
+                                        backgroundColor: 'rgba(255,255,255,0.03)', 
                                         border: '1px solid rgba(255, 255, 255, 0.1)', 
                                         borderRight: 'none',
-                                        borderRadius: '8px 0 0 8px',
                                         color: 'var(--text-primary)',
                                         fontSize: '1rem',
-                                        fontWeight: 'bold'
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
                                     }}>
-                                        +54 9
-                                    </span>
+                                        <span style={{ fontSize: '1.2rem' }}>🇦🇷</span> 
+                                        <span style={{ color: 'var(--text-secondary)' }}>+54 9</span>
+                                    </div>
                                     <input
                                         type="tel"
                                         className="input-field"
-                                        placeholder="11 12345678"
+                                        placeholder="11 1234 5678"
                                         value={bookingData.clientPhone}
-                                        onChange={(e) => updateData('clientPhone', e.target.value.replace(/\\D/g, ''))}
-                                        style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, padding: '15px', fontSize: '1rem', flex: 1 }}
+                                        onChange={(e) => updateData('clientPhone', e.target.value.replace(/\D/g, ''))}
+                                        style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, flex: 1 }}
                                         required
                                     />
                                 </div>
