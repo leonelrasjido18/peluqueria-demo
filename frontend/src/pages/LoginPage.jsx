@@ -17,6 +17,7 @@ const LoginPage = () => {
             try {
                 const userData = await login(phoneNumber, password);
                 if (userData) {
+                    localStorage.setItem('user', JSON.stringify(userData));
                     navigate('/dashboard');
                 }
             } catch (err) {
