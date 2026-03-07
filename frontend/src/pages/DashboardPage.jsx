@@ -81,7 +81,7 @@ const DashboardPage = () => {
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
             {/* Sidebar */}
-            <aside style={{ width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+            <aside style={{ position: 'fixed', top: 0, left: 0, height: '100vh', width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', zIndex: 10 }}>
                 <h2 style={{ color: 'var(--accent-primary)', marginBottom: '40px', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Scissors /> Royal Panel
                 </h2>
@@ -146,7 +146,7 @@ const DashboardPage = () => {
             </aside>
 
             {/* Main Content */}
-            <main style={{ flex: 1, padding: '40px' }}>
+            <main style={{ flex: 1, padding: '40px', marginLeft: '250px' }}>
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
                     <div>
                         <h1 style={{ fontSize: '2rem', marginBottom: '5px' }}>Hola, <span style={{ color: 'var(--accent-primary)' }}>Juampi</span></h1>
