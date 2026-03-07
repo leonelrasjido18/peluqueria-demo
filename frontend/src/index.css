@@ -294,3 +294,47 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .landing-img-container {
   padding: 30px 40px 30px 0;
 }
+
+/* Dashboard Responsive */
+.dashboard-sidebar {
+  transition: transform 0.3s ease-in-out;
+}
+
+.dashboard-main {
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 5;
+}
+
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    transform: translateX(-100%);
+  }
+  .dashboard-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .dashboard-main {
+    margin-left: 0 !important;
+    padding: 20px !important;
+  }
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+  .mobile-overlay.mobile-open {
+    display: block !important;
+  }
+}

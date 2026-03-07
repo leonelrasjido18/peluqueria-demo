@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
 import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService } from '../api';
 
 const DashboardPage = () => {
@@ -8,6 +8,7 @@ const DashboardPage = () => {
     const [services, setServices] = useState([]);
     const [editingService, setEditingService] = useState(null);
     const [newService, setNewService] = useState({ name: '', duration: '', price: '' });
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -80,15 +81,30 @@ const DashboardPage = () => {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+            {/* Mobile Overlay */}
+            <div 
+                className={`mobile-overlay ${isMobileMenuOpen ? 'mobile-open' : ''}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+            ></div>
+
             {/* Sidebar */}
-            <aside style={{ position: 'fixed', top: 0, left: 0, height: '100vh', width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', zIndex: 10 }}>
-                <h2 style={{ color: 'var(--accent-primary)', marginBottom: '40px', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Scissors /> Royal Panel
-                </h2>
+            <aside className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{ position: 'fixed', top: 0, left: 0, height: '100vh', width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', zIndex: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+                    <h2 style={{ color: 'var(--accent-primary)', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                        <Scissors /> Royal Panel
+                    </h2>
+                    <button 
+                        className="mobile-menu-btn" 
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px' }}
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
 
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button
-                        onClick={() => setActiveTab('calendar')}
+                        onClick={() => { setActiveTab('calendar'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'calendar' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
@@ -100,7 +116,7 @@ const DashboardPage = () => {
                         <CalendarIcon size={20} /> Turnos de Hoy
                     </button>
                     <button
-                        onClick={() => setActiveTab('stats')}
+                        onClick={() => { setActiveTab('stats'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'stats' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
@@ -112,7 +128,7 @@ const DashboardPage = () => {
                         <DollarSign size={20} /> Ganancias
                     </button>
                     <button
-                        onClick={() => setActiveTab('services')}
+                        onClick={() => { setActiveTab('services'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'services' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
@@ -124,7 +140,7 @@ const DashboardPage = () => {
                         <Scissors size={20} /> Servicios
                     </button>
                     <button
-                        onClick={() => setActiveTab('config')}
+                        onClick={() => { setActiveTab('config'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'config' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
@@ -146,11 +162,20 @@ const DashboardPage = () => {
             </aside>
 
             {/* Main Content */}
-            <main style={{ flex: 1, padding: '40px', marginLeft: '250px' }}>
-                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                    <div>
-                        <h1 style={{ fontSize: '2rem', marginBottom: '5px' }}>Hola, <span style={{ color: 'var(--accent-primary)' }}>Juampi</span></h1>
-                        <p style={{ color: 'var(--text-secondary)' }}>Te esperan {pendingAppointments} cortes para hoy.</p>
+            <main className="dashboard-main" style={{ flex: 1, padding: '40px', marginLeft: '250px' }}>
+                <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <button 
+                            className="mobile-menu-btn" 
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer', padding: '10px', borderRadius: '8px' }}
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <div>
+                            <h1 style={{ fontSize: '2rem', marginBottom: '5px' }}>Hola, <span style={{ color: 'var(--accent-primary)' }}>Juampi</span></h1>
+                            <p style={{ color: 'var(--text-secondary)' }}>Te esperan {pendingAppointments} cortes para hoy.</p>
+                        </div>
                     </div>
                     <div style={{ padding: '10px 20px', backgroundColor: 'var(--bg-secondary)', borderRadius: '30px', fontWeight: 'bold' }}>
                         {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
