@@ -217,4 +217,81 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     padding: 12px 20px;
     font-size: 0.95rem;
   }
+
+  /* Landing Page Responsive */
+  .landing-navbar {
+    padding: 20px !important;
+  }
+
+  .landing-main {
+    flex-direction: column !important;
+  }
+
+  .landing-content {
+    padding: 20px !important;
+    text-align: center;
+    align-items: center !important;
+    margin-top: 20px;
+  }
+
+  .landing-bagde {
+    margin: 0 auto 20px auto !important;
+  }
+
+  .landing-title {
+    font-size: 3rem !important;
+  }
+
+  .landing-btn {
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 300px;
+  }
+
+  .landing-features {
+    flex-direction: column !important;
+    gap: 20px !important;
+    align-items: center !important;
+    text-align: center;
+  }
+
+  .landing-feature-item {
+    flex-direction: column !important;
+    text-align: center;
+    gap: 10px !important;
+  }
+
+  .landing-img-container {
+    padding: 20px !important;
+    margin-top: -20px;
+  }
+}
+
+/* Base Landing Classes */
+.landing-navbar {
+  padding: 20px 50px;
+}
+
+.landing-main {
+  flex-direction: row;
+}
+
+.landing-content {
+  padding: 0 80px;
+}
+
+.landing-title {
+  font-size: 4.2rem;
+}
+
+.landing-features {
+  flex-direction: row;
+}
+
+.landing-feature-item {
+  flex-direction: row;
+}
+
+.landing-img-container {
+  padding: 30px 40px 30px 0;
 }
