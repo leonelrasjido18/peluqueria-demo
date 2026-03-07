@@ -203,6 +203,7 @@ app.get('/api/appointments', (req, res) => {
         SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status, s.name as serviceName, s.price 
         FROM appointments a
         JOIN services s ON a.serviceId = s.id
+        WHERE a.status != 'pending_payment'
         ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
     `;
     db.all(query, [], (err, rows) => {
