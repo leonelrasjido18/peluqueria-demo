@@ -93,7 +93,7 @@ const DashboardPage = () => {
             <aside className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{ position: 'fixed', top: 0, left: 0, height: '100vh', width: '250px', backgroundColor: 'var(--bg-secondary)', padding: '30px 20px', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', zIndex: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
                     <h2 style={{ color: 'var(--accent-primary)', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                        <Scissors /> Royal Panel
+                        <Scissors /> YSY Panel
                     </h2>
                     <button 
                         className="mobile-menu-btn" 
@@ -109,7 +109,7 @@ const DashboardPage = () => {
                         onClick={() => { setActiveTab('calendar'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'calendar' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            backgroundColor: activeTab === 'calendar' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
                             color: activeTab === 'calendar' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             transition: 'var(--transition)',
                             width: '100%', textAlign: 'left', fontWeight: '500'
@@ -121,7 +121,7 @@ const DashboardPage = () => {
                         onClick={() => { setActiveTab('stats'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'stats' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            backgroundColor: activeTab === 'stats' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
                             color: activeTab === 'stats' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             transition: 'var(--transition)',
                             width: '100%', textAlign: 'left', fontWeight: '500'
@@ -133,7 +133,7 @@ const DashboardPage = () => {
                         onClick={() => { setActiveTab('services'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'services' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            backgroundColor: activeTab === 'services' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
                             color: activeTab === 'services' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             transition: 'var(--transition)',
                             width: '100%', textAlign: 'left', fontWeight: '500'
@@ -145,7 +145,7 @@ const DashboardPage = () => {
                         onClick={() => { setActiveTab('config'); setIsMobileMenuOpen(false); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'config' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            backgroundColor: activeTab === 'config' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
                             color: activeTab === 'config' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             transition: 'var(--transition)',
                             width: '100%', textAlign: 'left', fontWeight: '500'
@@ -209,7 +209,7 @@ const DashboardPage = () => {
                                         </div>
                                         <span style={{
                                             padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                                            backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : 'rgba(218, 165, 32, 0.1)',
+                                            backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : 'rgba(192, 123, 247, 0.1)',
                                             color: app.status === 'completed' ? 'var(--success)' : 'var(--accent-primary)'
                                         }}>
                                             {app.status === 'completed' ? 'Completado' : 'Pendiente'}
@@ -229,7 +229,7 @@ const DashboardPage = () => {
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                             <div className="card glass-panel" style={{ textAlign: 'center' }}>
-                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(218, 165, 32, 0.1)', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(192, 123, 247, 0.1)', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <DollarSign size={24} color="var(--accent-primary)" />
                                 </div>
                                 <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ganancias de Hoy</h3>

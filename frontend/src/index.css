@@ -8,9 +8,9 @@
   --bg-tertiary: #262626;
   /* Slightly lighter gray */
 
-  --accent-primary: #E11D48;
-  /* Crimson / Ruby Red */
-  --accent-hover: #BE123C;
+  --accent-primary: #c07bf7;
+  /* Violet */
+  --accent-hover: #a546f5;
   --text-primary: #FAFAFA;
   --text-secondary: #A1A1AA;
   --text-inverse: #FFFFFF;
@@ -23,7 +23,7 @@
 
   --shadow-subtle: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
   --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
-  --shadow-glow: 0 0 20px rgba(225, 29, 72, 0.25);
+  --shadow-glow: 0 0 20px rgba(192, 123, 247, 0.25);
 }
 
 * {
