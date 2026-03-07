@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection } from '../api';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus } from 'lucide-react';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
     const [appointments, setAppointments] = useState([]);
+    const [services, setServices] = useState([]);
+    const [editingService, setEditingService] = useState(null);
+    const [newService, setNewService] = useState({ name: '', duration: '', price: '' });
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -20,7 +23,32 @@ const DashboardPage = () => {
         getAppointments().then(data => {
             setAppointments(data);
         }).catch(err => console.error(err));
+        
+        loadServices();
     }, []);
+
+    const loadServices = () => {
+        getServices().then(data => setServices(data)).catch(err => console.error(err));
+    };
+
+    const handleSaveService = async (e) => {
+        e.preventDefault();
+        if (editingService) {
+            await updateService(editingService.id, newService);
+            setEditingService(null);
+        } else {
+            await addService({ ...newService, duration: parseInt(newService.duration), price: parseFloat(newService.price) });
+        }
+        setNewService({ name: '', duration: '', price: '' });
+        loadServices();
+    };
+
+    const handleDeleteService = async (id) => {
+        if(window.confirm('¿Seguro que querés eliminar este servicio?')) {
+            await deleteService(id);
+            loadServices();
+        }
+    };
 
     // Polling WhatsApp Status when in Config Tab
     useEffect(() => {
@@ -82,6 +110,18 @@ const DashboardPage = () => {
                         }}
                     >
                         <DollarSign size={20} /> Ganancias
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('services')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'services' ? 'rgba(218, 165, 32, 0.1)' : 'transparent',
+                            color: activeTab === 'services' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Scissors size={20} /> Servicios
                     </button>
                     <button
                         onClick={() => setActiveTab('config')}
@@ -176,6 +216,61 @@ const DashboardPage = () => {
                                 <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Total de Clientes</h3>
                                 <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{todayAppointments}</div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'services' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Scissors color="var(--accent-primary)" /> Mis Servicios
+                        </h2>
+
+                        <div className="card glass-panel" style={{ marginBottom: '30px' }}>
+                            <h3 style={{ marginBottom: '15px' }}>{editingService ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+                            <form onSubmit={handleSaveService} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'end' }}>
+                                <div style={{ flex: '1 1 200px' }}>
+                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Nombre</label>
+                                    <input type="text" className="input-field" placeholder="Ej: Corte Clásico" value={newService.name} onChange={(e) => setNewService({...newService, name: e.target.value})} required style={{ padding: '12px' }} />
+                                </div>
+                                <div style={{ flex: '1 1 100px' }}>
+                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Duración (min)</label>
+                                    <input type="number" className="input-field" placeholder="30" value={newService.duration} onChange={(e) => setNewService({...newService, duration: e.target.value})} required style={{ padding: '12px' }} />
+                                </div>
+                                <div style={{ flex: '1 1 120px' }}>
+                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Precio ($)</label>
+                                    <input type="number" className="input-field" placeholder="5000" value={newService.price} onChange={(e) => setNewService({...newService, price: e.target.value})} required style={{ padding: '12px' }} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', flex: '1 1 100%' }}>
+                                    <button type="submit" className="btn-primary" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {editingService ? <Edit size={18} /> : <Plus size={18} />} {editingService ? 'Guardar' : 'Agregar'}
+                                    </button>
+                                    {editingService && (
+                                        <button type="button" onClick={() => { setEditingService(null); setNewService({ name: '', duration: '', price: '' }); }} style={{ padding: '12px', background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>
+                                            Cancelar
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '15px' }}>
+                            {services.map(s => (
+                                <div key={s.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h3 style={{ fontSize: '1.2rem', marginBottom: '5px' }}>{s.name}</h3>
+                                        <p style={{ color: 'var(--text-secondary)' }}>{s.duration} min • <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>${s.price}</span></p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button onClick={() => { setEditingService(s); setNewService({ name: s.name, duration: s.duration, price: s.price }); }} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
+                                            <Edit size={18} />
+                                        </button>
+                                        <button onClick={() => handleDeleteService(s.id)} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

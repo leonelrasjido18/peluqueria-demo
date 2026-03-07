@@ -9,6 +9,21 @@ export const getServices = async () => {
     return response.data;
 };
 
+export const addService = async (serviceData) => {
+    const response = await api.post('/services', serviceData);
+    return response.data;
+};
+
+export const updateService = async (id, serviceData) => {
+    const response = await api.put(`/services/${id}`, serviceData);
+    return response.data;
+};
+
+export const deleteService = async (id) => {
+    const response = await api.delete(`/services/${id}`);
+    return response.data;
+};
+
 export const createAppointment = async (appointmentData) => {
     const response = await api.post('/appointments', appointmentData);
     return response.data;

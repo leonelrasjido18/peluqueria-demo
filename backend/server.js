@@ -144,6 +144,31 @@ app.get('/api/services', (req, res) => {
     });
 });
 
+app.post('/api/services', (req, res) => {
+    const { name, duration, price } = req.body;
+    db.run("INSERT INTO services (name, duration, price) VALUES (?, ?, ?)", [name, duration, price], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID, name, duration, price });
+    });
+});
+
+app.put('/api/services/:id', (req, res) => {
+    const { name, duration, price } = req.body;
+    db.run("UPDATE services SET name = ?, duration = ?, price = ? WHERE id = ?", [name, duration, price, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/services/:id', (req, res) => {
+    // Note: We might have appointments tied to this service. We can soft-delete or just handle the error, but for MVP let's allow hard delete assuming caution.
+    // Better yet, just delete it.
+    db.run("DELETE FROM services WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 // ==========================================
 // ENDPOINTS DE TURNOS Y PAGOS 
 // ==========================================
