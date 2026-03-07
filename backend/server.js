@@ -81,6 +81,16 @@ function initDatabase() {
             time TEXT UNIQUE
         )`);
 
+        // Insertar horarios por defecto si no existen
+        db.get("SELECT COUNT(*) AS count FROM schedules", (err, row) => {
+            if (row && row.count === 0) {
+                const stmt = db.prepare("INSERT OR IGNORE INTO schedules (time) VALUES (?)");
+                ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'].forEach(t => stmt.run(t));
+                stmt.finalize();
+                console.log('✅ Horarios iniciales cargados.');
+            }
+        });
+
         // Insertar servicios por defecto si no existen
         db.get("SELECT COUNT(*) AS count FROM services", (err, row) => {
             if (row && row.count === 0) {

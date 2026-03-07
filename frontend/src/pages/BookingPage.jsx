@@ -20,13 +20,26 @@ const BookingPage = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        Promise.all([getServices(), getSchedules()])
-            .then(([servicesData, schedulesData]) => {
+        const fetchData = async () => {
+            try {
+                const servicesData = await getServices();
                 setServices(servicesData);
-                setAvailableTimes(schedulesData.map(s => s.time));
+                
+                try {
+                    const schedulesData = await getSchedules();
+                    setAvailableTimes(schedulesData.map(s => s.time));
+                } catch (schedErr) {
+                    console.error('Error cargando horarios:', schedErr);
+                    setAvailableTimes(['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00']);
+                }
+            } catch (err) {
+                console.error('Error general cargando datos:', err);
+            } finally {
                 setIsLoading(false);
-            })
-            .catch(err => console.error(err));
+            }
+        };
+
+        fetchData();
     }, []);
 
     const updateData = (key, value) => {
