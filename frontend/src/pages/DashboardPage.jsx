@@ -9,6 +9,7 @@ const DashboardPage = () => {
     const [editingService, setEditingService] = useState(null);
     const [newService, setNewService] = useState({ name: '', duration: '', price: '' });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -41,6 +42,7 @@ const DashboardPage = () => {
             await addService({ ...newService, duration: parseInt(newService.duration), price: parseFloat(newService.price) });
         }
         setNewService({ name: '', duration: '', price: '' });
+        setIsServiceModalOpen(false);
         loadServices();
     };
 
@@ -247,36 +249,17 @@ const DashboardPage = () => {
 
                 {activeTab === 'services' && (
                     <div className="animate-fade-in">
-                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Scissors color="var(--accent-primary)" /> Mis Servicios
-                        </h2>
-
-                        <div className="card glass-panel" style={{ marginBottom: '30px' }}>
-                            <h3 style={{ marginBottom: '15px' }}>{editingService ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
-                            <form onSubmit={handleSaveService} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'end' }}>
-                                <div style={{ flex: '1 1 200px' }}>
-                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Nombre</label>
-                                    <input type="text" className="input-field" placeholder="Ej: Corte Clásico" value={newService.name} onChange={(e) => setNewService({...newService, name: e.target.value})} required style={{ padding: '12px' }} />
-                                </div>
-                                <div style={{ flex: '1 1 100px' }}>
-                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Duración (min)</label>
-                                    <input type="number" className="input-field" placeholder="30" value={newService.duration} onChange={(e) => setNewService({...newService, duration: e.target.value})} required style={{ padding: '12px' }} />
-                                </div>
-                                <div style={{ flex: '1 1 120px' }}>
-                                    <label className="input-label" style={{ marginBottom: '5px', display: 'block' }}>Precio ($)</label>
-                                    <input type="number" className="input-field" placeholder="5000" value={newService.price} onChange={(e) => setNewService({...newService, price: e.target.value})} required style={{ padding: '12px' }} />
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', flex: '1 1 100%' }}>
-                                    <button type="submit" className="btn-primary" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {editingService ? <Edit size={18} /> : <Plus size={18} />} {editingService ? 'Guardar' : 'Agregar'}
-                                    </button>
-                                    {editingService && (
-                                        <button type="button" onClick={() => { setEditingService(null); setNewService({ name: '', duration: '', price: '' }); }} style={{ padding: '12px', background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>
-                                            Cancelar
-                                        </button>
-                                    )}
-                                </div>
-                            </form>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                <Scissors color="var(--accent-primary)" /> Mis Servicios
+                            </h2>
+                            <button 
+                                onClick={() => { setEditingService(null); setNewService({ name: '', duration: '', price: '' }); setIsServiceModalOpen(true); }}
+                                className="btn-primary" 
+                                style={{ padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}
+                            >
+                                <Plus size={18} /> Nuevo
+                            </button>
                         </div>
 
                         <div style={{ display: 'grid', gap: '15px' }}>
@@ -287,7 +270,7 @@ const DashboardPage = () => {
                                         <p style={{ color: 'var(--text-secondary)' }}>{s.duration} min • <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>${s.price}</span></p>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button onClick={() => { setEditingService(s); setNewService({ name: s.name, duration: s.duration, price: s.price }); }} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
+                                        <button onClick={() => { setEditingService(s); setNewService({ name: s.name, duration: s.duration, price: s.price }); setIsServiceModalOpen(true); }} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
                                             <Edit size={18} />
                                         </button>
                                         <button onClick={() => handleDeleteService(s.id)} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--error)', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}>
@@ -296,7 +279,47 @@ const DashboardPage = () => {
                                     </div>
                                 </div>
                             ))}
+                            {services.length === 0 && (
+                                <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>No tienes servicios registrados.</p>
+                            )}
                         </div>
+
+                        {/* Modal para Servicio */}
+                        {isServiceModalOpen && (
+                            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                                <div className="card glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '30px', position: 'relative' }}>
+                                    <button 
+                                        onClick={() => setIsServiceModalOpen(false)}
+                                        style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                    <h3 style={{ marginBottom: '20px', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                                        {editingService ? <Edit size={24} color="var(--accent-primary)" /> : <Plus size={24} color="var(--accent-primary)" />} 
+                                        {editingService ? 'Editar Servicio' : 'Nuevo Servicio'}
+                                    </h3>
+                                    <form onSubmit={handleSaveService} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div>
+                                            <label className="input-label" style={{ marginBottom: '8px', display: 'block' }}>Nombre del Servicio</label>
+                                            <input type="text" className="input-field" placeholder="Ej: Corte Clásico" value={newService.name} onChange={(e) => setNewService({...newService, name: e.target.value})} required style={{ padding: '12px' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '15px' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label className="input-label" style={{ marginBottom: '8px', display: 'block' }}>Duración (minutos)</label>
+                                                <input type="number" className="input-field" placeholder="30" value={newService.duration} onChange={(e) => setNewService({...newService, duration: e.target.value})} required style={{ padding: '12px' }} min="1" />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label className="input-label" style={{ marginBottom: '8px', display: 'block' }}>Precio ($)</label>
+                                                <input type="number" className="input-field" placeholder="5000" value={newService.price} onChange={(e) => setNewService({...newService, price: e.target.value})} required style={{ padding: '12px' }} min="0" />
+                                            </div>
+                                        </div>
+                                        <button type="submit" className="btn-primary" style={{ padding: '15px', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '1.1rem' }}>
+                                            {editingService ? 'Guardar Cambios' : 'Crear Servicio'} <CheckCircle size={20} /> 
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
