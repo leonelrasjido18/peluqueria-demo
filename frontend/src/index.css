@@ -229,13 +229,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   .landing-content {
     padding: 20px !important;
-    text-align: center;
-    align-items: center !important;
+    text-align: left;
+    align-items: flex-start !important;
     margin-top: 20px;
   }
 
   .landing-bagde {
-    margin: 0 auto 20px auto !important;
+    margin: 0 0 20px 0 !important;
   }
 
   .landing-title {
@@ -243,7 +243,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   .landing-btn {
-    margin: 0 auto !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: 300px;
   }
@@ -251,19 +251,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .landing-features {
     flex-direction: column !important;
     gap: 20px !important;
-    align-items: center !important;
-    text-align: center;
+    align-items: flex-start !important;
+    text-align: left;
   }
 
   .landing-feature-item {
-    flex-direction: column !important;
-    text-align: center;
-    gap: 10px !important;
+    flex-direction: row !important;
+    text-align: left;
+    gap: 15px !important;
   }
 
   .landing-img-container {
-    padding: 20px !important;
-    margin-top: -20px;
+    display: none !important;
   }
 }
 
