@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode');
 
@@ -12,11 +12,14 @@ async function startWhatsApp(forceReconnect = false) {
     try {
         // Carpeta donde se guardan las credenciales para no pedir QR una vez escaneado
         const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+        const { version } = await fetchLatestBaileysVersion();
 
         whatsappClient = makeWASocket({
             auth: state,
             printQRInTerminal: true, // Imprime en consola para logs tras bambalinas
-            logger: pino({ level: 'silent' }) // Mantiene la consola de Render o local limpia sin exceso de logs
+            logger: pino({ level: 'silent' }), // Mantiene la consola de Render o local limpia sin exceso de logs
+            version,
+            browser: Browsers.macOS('Desktop')
         });
 
         // Guardar las claves si Baileys las actualiza automáticamente
@@ -40,7 +43,7 @@ async function startWhatsApp(forceReconnect = false) {
             }
 
             if (connection === 'close') {
-                console.log('❌ WhatsApp se ha cerrado o desconectado.');
+                console.log('❌ WhatsApp se ha cerrado o desconectado.', update.lastDisconnect?.error);
                 isWhatsAppReady = false;
                 currentQrBase64 = null;
                 // Si la sesión fue borrada o cerrada desde el celular, podríamos vaciar auth_info_baileys
