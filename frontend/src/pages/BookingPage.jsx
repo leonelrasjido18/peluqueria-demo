@@ -102,7 +102,7 @@ const BookingPage = () => {
                                         padding: '16px',
                                         borderRadius: '16px',
                                         border: `2px solid ${bookingData.serviceId === s.id ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
-                                        backgroundColor: bookingData.serviceId === s.id ? 'rgba(225, 29, 72, 0.05)' : 'var(--bg-secondary)',
+                                        backgroundColor: bookingData.serviceId === s.id ? 'rgba(192, 123, 247, 0.05)' : 'var(--bg-secondary)',
                                         cursor: 'pointer',
                                         display: 'flex', flexDirection: 'column', gap: '10px',
                                         transition: 'var(--transition)',

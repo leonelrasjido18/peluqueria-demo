@@ -118,7 +118,7 @@ img {
 }
 
 .card:hover {
-  border-color: rgba(225, 29, 72, 0.3);
+  border-color: rgba(192, 123, 247, 0.3);
   box-shadow: var(--shadow-medium);
 }
 
@@ -136,7 +136,7 @@ img {
 
 .input-field:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2);
+  box-shadow: 0 0 0 2px rgba(192, 123, 247, 0.2);
 }
 
 .input-label {
