@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X, Ban, FileText, TrendingUp, Wallet } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken, getBlockedTimes, addBlockedTime, deleteBlockedTime, getClientHistory, getClientNotes, addClientNote, deleteClientNote, getExpenses, addExpense, deleteExpense, getBufferMinutes, saveBufferMinutes, getStatsPeaks } from '../api';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X, Ban, FileText, TrendingUp, Wallet, Image, Star, Gift, Tag, Download, QrCode, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken, getBlockedTimes, addBlockedTime, deleteBlockedTime, getClientHistory, getClientNotes, addClientNote, deleteClientNote, getExpenses, addExpense, deleteExpense, getBufferMinutes, saveBufferMinutes, getStatsPeaks, getNetRevenue, getWeekAppointments, exportAppointmentsCSV, getGallery, addGalleryItem, deleteGalleryItem, getReviews, deleteReview, getClients, addClient, updateClient, deleteClient, getUpcomingBirthdays, getFavoriteService, getPromotions, addPromotion, togglePromotion, deletePromotion, markAppointmentCompleted } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -50,6 +50,36 @@ const DashboardPage = () => {
     // PWA Install State
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+    // Weekly Agenda State
+    const [weekStart, setWeekStart] = useState(() => {
+        const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1);
+        return d.toISOString().split('T')[0];
+    });
+    const [weekAppointments, setWeekAppointments] = useState([]);
+
+    // Gallery State
+    const [galleryItems, setGalleryItems] = useState([]);
+    const [newGalleryUrl, setNewGalleryUrl] = useState('');
+    const [newGalleryCaption, setNewGalleryCaption] = useState('');
+
+    // Reviews State
+    const [reviews, setReviews] = useState([]);
+
+    // Clients/Birthday State
+    const [clients, setClients] = useState([]);
+    const [newClient, setNewClient] = useState({ phone: '', name: '', birthday: '' });
+    const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
+
+    // Promotions State
+    const [promotions, setPromotions] = useState([]);
+    const [newPromo, setNewPromo] = useState({ code: '', description: '', discountPercent: '', maxUses: '', validUntil: '' });
+
+    // Net Revenue State
+    const [netRevenueData, setNetRevenueData] = useState([]);
+
+    // Favorite Service State
+    const [favoriteService, setFavoriteService] = useState(null);
 
     // Derived stats
     const todayAppointments = appointments.length;
@@ -360,6 +390,88 @@ const DashboardPage = () => {
 
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+    // ---- NEW FUNCTIONS ----
+    const loadWeekAppointments = async (start) => {
+        const s = new Date(start + 'T00:00:00');
+        const e = new Date(s); e.setDate(e.getDate() + 6);
+        const endStr = e.toISOString().split('T')[0];
+        try { const data = await getWeekAppointments(start, endStr); setWeekAppointments(data); } catch(err) { console.error(err); }
+    };
+    const changeWeek = (dir) => {
+        const d = new Date(weekStart + 'T00:00:00');
+        d.setDate(d.getDate() + (dir * 7));
+        const newStart = d.toISOString().split('T')[0];
+        setWeekStart(newStart);
+        loadWeekAppointments(newStart);
+    };
+    const getWeekDays = () => {
+        const days = []; const s = new Date(weekStart + 'T00:00:00');
+        const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(s); d.setDate(d.getDate() + i);
+            days.push({ date: d.toISOString().split('T')[0], label: dayNames[i], day: d.getDate() });
+        }
+        return days;
+    };
+
+    const handleMarkCompleted = async (id) => {
+        await markAppointmentCompleted(id);
+        const data = await getAppointments();
+        setAppointments(data);
+    };
+
+    const loadGallery = () => { getGallery().then(setGalleryItems).catch(console.error); };
+    const handleAddGallery = async (e) => {
+        e.preventDefault();
+        if (!newGalleryUrl) return;
+        await addGalleryItem({ imageUrl: newGalleryUrl, caption: newGalleryCaption });
+        setNewGalleryUrl(''); setNewGalleryCaption('');
+        loadGallery();
+    };
+    const handleDeleteGallery = async (id) => {
+        if (window.confirm('¿Eliminar esta foto?')) { await deleteGalleryItem(id); loadGallery(); }
+    };
+
+    const loadReviews = () => { getReviews().then(setReviews).catch(console.error); };
+    const handleDeleteReview = async (id) => {
+        if (window.confirm('¿Eliminar esta reseña?')) { await deleteReview(id); loadReviews(); }
+    };
+
+    const loadClients = () => { getClients().then(setClients).catch(console.error); };
+    const loadBirthdays = () => { getUpcomingBirthdays().then(setUpcomingBirthdays).catch(console.error); };
+    const handleAddClient = async (e) => {
+        e.preventDefault();
+        if (!newClient.phone || !newClient.name) return;
+        await addClient(newClient);
+        setNewClient({ phone: '', name: '', birthday: '' });
+        loadClients(); loadBirthdays();
+    };
+    const handleDeleteClient = async (id) => {
+        if (window.confirm('¿Eliminar este cliente?')) { await deleteClient(id); loadClients(); }
+    };
+
+    const loadPromotions = () => { getPromotions().then(setPromotions).catch(console.error); };
+    const handleAddPromo = async (e) => {
+        e.preventDefault();
+        if (!newPromo.code || !newPromo.discountPercent) return;
+        const res = await addPromotion(newPromo);
+        if (res.success) {
+            setNewPromo({ code: '', description: '', discountPercent: '', maxUses: '', validUntil: '' });
+            loadPromotions();
+        } else { alert(res.error || 'Error al crear'); }
+    };
+    const handleTogglePromo = async (id) => { await togglePromotion(id); loadPromotions(); };
+    const handleDeletePromo = async (id) => {
+        if (window.confirm('¿Eliminar esta promoción?')) { await deletePromotion(id); loadPromotions(); }
+    };
+
+    const loadNetRevenue = () => { getNetRevenue().then(setNetRevenueData).catch(console.error); };
+
+    const handleExportCSV = () => {
+        const now = new Date();
+        exportAppointmentsCSV(String(now.getMonth() + 1), String(now.getFullYear()));
+    };
+
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
             {/* Visual Notification (Toast) */}
@@ -493,7 +605,7 @@ const DashboardPage = () => {
                         <Wallet size={20} /> Gastos
                     </button>
                     <button
-                        onClick={() => { setActiveTab('peaks'); setIsMobileMenuOpen(false); loadPeakStats(); }}
+                        onClick={() => { setActiveTab('peaks'); setIsMobileMenuOpen(false); loadPeakStats(); loadNetRevenue(); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'peaks' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
@@ -503,6 +615,66 @@ const DashboardPage = () => {
                         }}
                     >
                         <TrendingUp size={20} /> Estadísticas
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('week'); setIsMobileMenuOpen(false); loadWeekAppointments(weekStart); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'week' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'week' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <CalendarIcon size={20} /> Agenda Semanal
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('gallery'); setIsMobileMenuOpen(false); loadGallery(); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'gallery' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'gallery' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Image size={20} /> Galería
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('reviews'); setIsMobileMenuOpen(false); loadReviews(); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'reviews' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'reviews' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Star size={20} /> Reseñas
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('clients'); setIsMobileMenuOpen(false); loadClients(); loadBirthdays(); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'clients' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'clients' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Gift size={20} /> Clientes
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('promos'); setIsMobileMenuOpen(false); loadPromotions(); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'promos' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'promos' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Tag size={20} /> Promociones
                     </button>
                 </nav>
 
@@ -548,6 +720,13 @@ const DashboardPage = () => {
                             >
                                 <Plus size={18} /> Turno Manual
                             </button>
+                            <button
+                                onClick={handleExportCSV}
+                                className="btn-secondary"
+                                style={{ width: 'auto', padding: '10px 20px', display: 'flex', gap: '8px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}
+                            >
+                                <Download size={18} /> Exportar CSV
+                            </button>
                         </div>
                         <div style={{ display: 'grid', gap: '15px' }}>
                             {appointments.map(app => (
@@ -582,6 +761,15 @@ const DashboardPage = () => {
                                                     title="Ver ficha del cliente"
                                                 >
                                                     <FileText size={14} />
+                                                </button>
+                                            )}
+                                            {app.status === 'scheduled' && (
+                                                <button 
+                                                    onClick={() => handleMarkCompleted(app.id)}
+                                                    style={{ padding: '6px 10px', borderRadius: '20px', backgroundColor: 'rgba(0, 204, 102, 0.1)', border: 'none', color: 'var(--success)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}
+                                                    title="Marcar como completado"
+                                                >
+                                                    <CheckCircle size={14} />
                                                 </button>
                                             )}
                                             <button 
@@ -1118,6 +1306,266 @@ const DashboardPage = () => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Ganancia Neta Mensual */}
+                            <div className="card" style={{ gridColumn: '1 / -1' }}>
+                                <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>📊 Ganancia Neta Mensual (Ingresos - Gastos)</h3>
+                                {netRevenueData.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                    <div style={{ display: 'grid', gap: '12px' }}>
+                                        {netRevenueData.map(m => {
+                                            const maxVal = Math.max(...netRevenueData.map(x => x.totalRevenue), 1);
+                                            return (
+                                                <div key={m.month} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '15px', alignItems: 'center' }}>
+                                                    <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{m.month}</span>
+                                                    <div>
+                                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', fontSize: '0.8rem' }}>
+                                                            <span style={{ color: 'var(--success)' }}>+${m.totalRevenue}</span>
+                                                            <span style={{ color: 'var(--error)' }}>-${m.totalExpenses}</span>
+                                                            <span style={{ color: m.netRevenue >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 'bold' }}> = ${m.netRevenue}</span>
+                                                        </div>
+                                                        <div style={{ height: '20px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
+                                                            <div style={{ height: '100%', width: `${(m.totalRevenue / maxVal) * 100}%`, backgroundColor: 'rgba(0, 204, 102, 0.3)', borderRadius: '10px', position: 'absolute' }}></div>
+                                                            <div style={{ height: '100%', width: `${(m.totalExpenses / maxVal) * 100}%`, backgroundColor: 'rgba(239, 68, 68, 0.4)', borderRadius: '10px', position: 'absolute' }}></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: AGENDA SEMANAL ====== */}
+                {activeTab === 'week' && (
+                    <div className="animate-fade-in">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                <CalendarIcon color="var(--accent-primary)" /> Agenda Semanal
+                            </h2>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <button onClick={() => changeWeek(-1)} style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><ChevronLeft size={20} /></button>
+                                <span style={{ fontWeight: '600', minWidth: '200px', textAlign: 'center' }}>{weekStart}</span>
+                                <button onClick={() => changeWeek(1)} style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><ChevronRight size={20} /></button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                            {getWeekDays().map(d => {
+                                const dayAppts = weekAppointments.filter(a => a.appointmentDate === d.date);
+                                const isToday = d.date === new Date().toISOString().split('T')[0];
+                                return (
+                                    <div key={d.date} className="card" style={{ padding: '15px', borderTop: isToday ? '3px solid var(--accent-primary)' : '3px solid transparent', minHeight: '150px' }}>
+                                        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>{d.label}</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: isToday ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{d.day}</div>
+                                        </div>
+                                        {dayAppts.length === 0 ? (
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>Sin turnos</p>
+                                        ) : dayAppts.map(a => (
+                                            <div key={a.id} style={{ padding: '6px 8px', backgroundColor: a.status === 'completed' ? 'rgba(0,204,102,0.1)' : 'rgba(192,123,247,0.1)', borderRadius: '6px', marginBottom: '6px', fontSize: '0.8rem' }}>
+                                                <div style={{ fontWeight: '600' }}>{a.appointmentTime}</div>
+                                                <div style={{ color: 'var(--text-secondary)' }}>{a.clientName}</div>
+                                                <div style={{ color: 'var(--accent-primary)', fontSize: '0.75rem' }}>{a.serviceName}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: GALERÍA ====== */}
+                {activeTab === 'gallery' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Image color="var(--accent-primary)" /> Galería de Trabajos
+                        </h2>
+                        <form onSubmit={handleAddGallery} className="card" style={{ marginBottom: '20px' }}>
+                            <h3 style={{ marginBottom: '15px' }}>Agregar Foto</h3>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                <div style={{ flex: 2, minWidth: '250px' }}>
+                                    <label className="input-label">URL de la Imagen</label>
+                                    <input className="input-field" placeholder="https://..." value={newGalleryUrl} onChange={e => setNewGalleryUrl(e.target.value)} required />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Descripción</label>
+                                    <input className="input-field" placeholder="Ej: Fade moderno" value={newGalleryCaption} onChange={e => setNewGalleryCaption(e.target.value)} />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto' }}><Plus size={16} /> Subir</button>
+                            </div>
+                        </form>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                            {galleryItems.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', gridColumn: '1/-1', padding: '40px' }}>No hay fotos en la galería aún. ¡Subí tu primer trabajo!</p>}
+                            {galleryItems.map(g => (
+                                <div key={g.id} className="card" style={{ padding: '0', overflow: 'hidden', position: 'relative' }}>
+                                    <img src={g.imageUrl} alt={g.caption} style={{ width: '100%', height: '200px', objectFit: 'cover' }} onError={e => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect fill="%23333" width="300" height="200"/><text fill="%23666" x="50%" y="50%" text-anchor="middle" dy=".35em">Error de imagen</text></svg>'; }} />
+                                    <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.9rem' }}>{g.caption || 'Sin descripción'}</span>
+                                        <button onClick={() => handleDeleteGallery(g.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: RESEÑAS ====== */}
+                {activeTab === 'reviews' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Star color="var(--accent-primary)" /> Reseñas de Clientes
+                        </h2>
+                        {reviews.length === 0 ? (
+                            <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+                                <Star size={40} color="var(--text-secondary)" style={{ margin: '0 auto 15px' }} />
+                                <p style={{ color: 'var(--text-secondary)' }}>Aún no hay reseñas. Los clientes pueden dejarte una desde la página pública.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {reviews.map(r => (
+                                    <div key={r.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                                <h3 style={{ margin: 0 }}>{r.clientName}</h3>
+                                                <div style={{ color: '#fbbf24' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
+                                            </div>
+                                            {r.comment && <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>"{r.comment}"</p>}
+                                            <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{new Date(r.createdAt).toLocaleDateString('es-ES')}</small>
+                                        </div>
+                                        <button onClick={() => handleDeleteReview(r.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ====== TAB: CLIENTES / CUMPLEAÑOS ====== */}
+                {activeTab === 'clients' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Gift color="var(--accent-primary)" /> Clientes y Cumpleaños
+                        </h2>
+
+                        {upcomingBirthdays.length > 0 && (
+                            <div className="card glass-panel" style={{ marginBottom: '20px', border: '1px solid rgba(251, 191, 36, 0.3)', background: 'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, transparent 100%)' }}>
+                                <h3 style={{ color: '#fbbf24', marginBottom: '10px' }}>🎂 Cumpleaños esta semana</h3>
+                                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                                    {upcomingBirthdays.map(b => (
+                                        <div key={b.id} style={{ padding: '10px 15px', backgroundColor: b.isToday ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.03)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ fontSize: '1.5rem' }}>{b.isToday ? '🎉' : '🎂'}</span>
+                                            <div>
+                                                <div style={{ fontWeight: '600' }}>{b.name}</div>
+                                                <small style={{ color: 'var(--text-secondary)' }}>{b.isToday ? '¡HOY!' : b.birthday}</small>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleAddClient} className="card" style={{ marginBottom: '20px' }}>
+                            <h3 style={{ marginBottom: '15px' }}>Agregar Cliente</h3>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Nombre</label>
+                                    <input className="input-field" placeholder="Juan Pérez" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} required />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Teléfono</label>
+                                    <input className="input-field" placeholder="+5493875..." value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} required />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Cumpleaños</label>
+                                    <input type="date" className="input-field" value={newClient.birthday} onChange={e => setNewClient({...newClient, birthday: e.target.value})} />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto' }}><Plus size={16} /> Agregar</button>
+                            </div>
+                        </form>
+
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                            {clients.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>No hay clientes registrados aún.</p>}
+                            {clients.map(c => (
+                                <div key={c.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), rgba(192,123,247,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                            {c.name ? c.name.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, marginBottom: '3px' }}>{c.name}</h3>
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>
+                                                📞 {c.phone} {c.birthday && <span>• 🎂 {c.birthday}</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleDeleteClient(c.id)} style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: PROMOCIONES ====== */}
+                {activeTab === 'promos' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Tag color="var(--accent-primary)" /> Promociones y Descuentos
+                        </h2>
+
+                        <form onSubmit={handleAddPromo} className="card" style={{ marginBottom: '20px' }}>
+                            <h3 style={{ marginBottom: '15px' }}>Crear Promoción</h3>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                <div style={{ minWidth: '120px' }}>
+                                    <label className="input-label">Código</label>
+                                    <input className="input-field" placeholder="PROMO10" value={newPromo.code} onChange={e => setNewPromo({...newPromo, code: e.target.value})} required style={{ textTransform: 'uppercase' }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Descripción</label>
+                                    <input className="input-field" placeholder="10% en tu primer corte" value={newPromo.description} onChange={e => setNewPromo({...newPromo, description: e.target.value})} />
+                                </div>
+                                <div style={{ minWidth: '80px' }}>
+                                    <label className="input-label">% Desc.</label>
+                                    <input type="number" className="input-field" placeholder="10" min="1" max="100" value={newPromo.discountPercent} onChange={e => setNewPromo({...newPromo, discountPercent: e.target.value})} required />
+                                </div>
+                                <div style={{ minWidth: '80px' }}>
+                                    <label className="input-label">Usos máx.</label>
+                                    <input type="number" className="input-field" placeholder="0=∞" value={newPromo.maxUses} onChange={e => setNewPromo({...newPromo, maxUses: e.target.value})} />
+                                </div>
+                                <div style={{ minWidth: '150px' }}>
+                                    <label className="input-label">Válido hasta</label>
+                                    <input type="date" className="input-field" value={newPromo.validUntil} onChange={e => setNewPromo({...newPromo, validUntil: e.target.value})} />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto' }}><Plus size={16} /> Crear</button>
+                            </div>
+                        </form>
+
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                            {promotions.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>No hay promociones creadas.</p>}
+                            {promotions.map(p => (
+                                <div key={p.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: p.active ? 1 : 0.5 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <div style={{ padding: '10px 15px', backgroundColor: 'rgba(192,123,247,0.1)', borderRadius: '10px', fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent-primary)', letterSpacing: '1px' }}>
+                                            {p.code}
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, marginBottom: '3px' }}>{p.discountPercent}% OFF</h3>
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>
+                                                {p.description || 'Sin descripción'} • Usos: {p.usageCount}{p.maxUses > 0 ? `/${p.maxUses}` : '/∞'}
+                                                {p.validUntil && ` • Hasta: ${p.validUntil}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => handleTogglePromo(p.id)} style={{ padding: '6px 12px', borderRadius: '20px', backgroundColor: p.active ? 'rgba(0,204,102,0.1)' : 'rgba(239,68,68,0.1)', border: 'none', color: p.active ? 'var(--success)' : 'var(--error)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
+                                            {p.active ? 'Activa' : 'Inactiva'}
+                                        </button>
+                                        <button onClick={() => handleDeletePromo(p.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

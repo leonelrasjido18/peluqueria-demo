@@ -172,6 +172,55 @@ function initDatabase() {
             createdAt TEXT DEFAULT (datetime('now'))
         )`);
 
+        // Tabla de Clientes (cumpleaños y datos)
+        db.run(`CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT UNIQUE NOT NULL,
+            name TEXT,
+            birthday TEXT,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
+        // Tabla de Galería de Fotos
+        db.run(`CREATE TABLE IF NOT EXISTS gallery (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            imageUrl TEXT NOT NULL,
+            caption TEXT,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
+        // Tabla de Reseñas
+        db.run(`CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clientName TEXT NOT NULL,
+            rating INTEGER NOT NULL,
+            comment TEXT,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
+        // Tabla de Promociones / Descuentos
+        db.run(`CREATE TABLE IF NOT EXISTS promotions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE NOT NULL,
+            description TEXT,
+            discountPercent INTEGER NOT NULL,
+            active INTEGER DEFAULT 1,
+            usageCount INTEGER DEFAULT 0,
+            maxUses INTEGER DEFAULT 0,
+            validUntil TEXT,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
+        // Columna de notificación 24hs en appointments
+        db.run(`ALTER TABLE appointments ADD COLUMN notification24hSent INTEGER DEFAULT 0`, (err) => {
+            // Ignorar error si ya existe
+        });
+
+        // Columna recurrence en appointments
+        db.run(`ALTER TABLE appointments ADD COLUMN recurrenceWeeks INTEGER DEFAULT 0`, (err) => {
+            // Ignorar error si ya existe
+        });
+
         // Insertar horarios por defecto si no existen
         db.get("SELECT COUNT(*) AS count FROM schedules", (err, row) => {
             if (row && row.count === 0) {
@@ -734,7 +783,6 @@ app.post('/api/settings/buffer', requireAuth, (req, res) => {
 // ENDPOINTS DE ESTADÍSTICAS
 // ==========================================
 app.get('/api/stats/peaks', requireAuth, (req, res) => {
-    // Picos por día de la semana (0=domingo, 6=sábado)
     const dayQuery = `
         SELECT 
             CASE cast(strftime('%w', appointmentDate) as integer)
@@ -753,7 +801,6 @@ app.get('/api/stats/peaks', requireAuth, (req, res) => {
         GROUP BY dayNum
         ORDER BY dayNum
     `;
-    // Picos por hora
     const hourQuery = `
         SELECT appointmentTime as hour, COUNT(*) as total
         FROM appointments 
@@ -761,7 +808,6 @@ app.get('/api/stats/peaks', requireAuth, (req, res) => {
         GROUP BY appointmentTime
         ORDER BY appointmentTime
     `;
-    // Resumen financiero mensual
     const financeQuery = `
         SELECT 
             strftime('%Y-%m', appointmentDate) as month,
@@ -788,6 +834,293 @@ app.get('/api/stats/peaks', requireAuth, (req, res) => {
 });
 
 // ==========================================
+// ENDPOINT GANANCIA NETA MENSUAL
+// ==========================================
+app.get('/api/stats/net-revenue', requireAuth, (req, res) => {
+    const revenueQuery = `
+        SELECT 
+            strftime('%Y-%m', appointmentDate) as month,
+            SUM(COALESCE(s.price, 0)) as totalRevenue,
+            COUNT(*) as totalAppointments
+        FROM appointments a
+        LEFT JOIN services s ON a.serviceId = s.id
+        WHERE a.status = 'completed'
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 12
+    `;
+    const expensesQuery = `
+        SELECT 
+            strftime('%Y-%m', expenseDate) as month,
+            SUM(amount) as totalExpenses
+        FROM expenses
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 12
+    `;
+    db.all(revenueQuery, [], (err, revenueRows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        db.all(expensesQuery, [], (err, expenseRows) => {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            const expenseMap = {};
+            expenseRows.forEach(e => { expenseMap[e.month] = e.totalExpenses; });
+            const data = revenueRows.map(r => ({
+                month: r.month,
+                totalRevenue: r.totalRevenue,
+                totalExpenses: expenseMap[r.month] || 0,
+                netRevenue: r.totalRevenue - (expenseMap[r.month] || 0),
+                totalAppointments: r.totalAppointments
+            }));
+            res.json(data);
+        });
+    });
+});
+
+// ==========================================
+// ENDPOINT AGENDA SEMANAL
+// ==========================================
+app.get('/api/appointments/week', requireAuth, (req, res) => {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ error: 'startDate y endDate son requeridos.' });
+    const query = `
+        SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status,
+               COALESCE(s.name, 'Servicio Eliminado') as serviceName, COALESCE(s.price, 0) as price
+        FROM appointments a
+        LEFT JOIN services s ON a.serviceId = s.id
+        WHERE a.appointmentDate >= ? AND a.appointmentDate <= ?
+        AND a.status IN ('scheduled', 'completed', 'pending_payment')
+        ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
+    `;
+    db.all(query, [startDate, endDate], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+// ==========================================
+// ENDPOINT EXPORTAR CSV
+// ==========================================
+app.get('/api/appointments/export', requireAuth, (req, res) => {
+    const { month, year } = req.query;
+    let query = `
+        SELECT a.id, a.clientName, a.clientPhone, a.appointmentDate, a.appointmentTime, a.status,
+               COALESCE(s.name, 'N/A') as serviceName, COALESCE(s.price, 0) as price
+        FROM appointments a
+        LEFT JOIN services s ON a.serviceId = s.id
+    `;
+    let params = [];
+    if (month && year) {
+        query += " WHERE strftime('%m', a.appointmentDate) = ? AND strftime('%Y', a.appointmentDate) = ?";
+        params = [month.padStart(2, '0'), year];
+    }
+    query += " ORDER BY a.appointmentDate DESC, a.appointmentTime ASC";
+
+    db.all(query, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        const header = 'ID,Cliente,Telefono,Fecha,Hora,Estado,Servicio,Precio\n';
+        const csvRows = rows.map(r =>
+            `${r.id},"${r.clientName}","${r.clientPhone}",${r.appointmentDate},${r.appointmentTime},${r.status},"${r.serviceName}",${r.price}`
+        ).join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=turnos_${month || 'all'}_${year || 'all'}.csv`);
+        res.send(header + csvRows);
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE GALERÍA DE FOTOS
+// ==========================================
+app.get('/api/gallery', (req, res) => {
+    db.all("SELECT * FROM gallery ORDER BY createdAt DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/gallery', requireAuth, (req, res) => {
+    const { imageUrl, caption } = req.body;
+    if (!imageUrl) return res.status(400).json({ error: 'URL de imagen requerida.' });
+    db.run("INSERT INTO gallery (imageUrl, caption) VALUES (?, ?)", [imageUrl, caption || ''], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ id: this.lastID, success: true });
+    });
+});
+
+app.delete('/api/gallery/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM gallery WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE RESEÑAS
+// ==========================================
+app.get('/api/reviews', (req, res) => {
+    db.all("SELECT * FROM reviews ORDER BY createdAt DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/reviews', (req, res) => {
+    const { clientName, rating, comment } = req.body;
+    if (!clientName || !rating) return res.status(400).json({ error: 'Nombre y calificación requeridos.' });
+    if (rating < 1 || rating > 5) return res.status(400).json({ error: 'La calificación debe ser entre 1 y 5.' });
+    db.run("INSERT INTO reviews (clientName, rating, comment) VALUES (?, ?, ?)",
+        [clientName, parseInt(rating), comment || ''],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            res.json({ id: this.lastID, success: true });
+        }
+    );
+});
+
+app.delete('/api/reviews/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM reviews WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE CLIENTES (CUMPLEAÑOS)
+// ==========================================
+app.get('/api/clients', requireAuth, (req, res) => {
+    db.all("SELECT * FROM clients ORDER BY name ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/clients', requireAuth, (req, res) => {
+    const { phone, name, birthday } = req.body;
+    if (!phone || !name) return res.status(400).json({ error: 'Teléfono y nombre son requeridos.' });
+    db.run("INSERT OR REPLACE INTO clients (phone, name, birthday) VALUES (?, ?, ?)",
+        [phone, name, birthday || null],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            res.json({ id: this.lastID, success: true });
+        }
+    );
+});
+
+app.put('/api/clients/:id', requireAuth, (req, res) => {
+    const { name, birthday } = req.body;
+    db.run("UPDATE clients SET name = ?, birthday = ? WHERE id = ?",
+        [name, birthday || null, req.params.id],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            res.json({ success: true });
+        }
+    );
+});
+
+app.delete('/api/clients/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM clients WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// Clientes con cumpleaños hoy o esta semana
+app.get('/api/clients/birthdays/upcoming', requireAuth, (req, res) => {
+    const now = new Date();
+    const todayMD = `${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    db.all("SELECT * FROM clients WHERE birthday IS NOT NULL", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        const upcoming = rows.filter(c => {
+            if (!c.birthday) return false;
+            const bday = c.birthday.slice(5); // MM-DD
+            const [bm, bd] = bday.split('-').map(Number);
+            const [tm, td] = todayMD.split('-').map(Number);
+            const bdayDate = new Date(now.getFullYear(), bm - 1, bd);
+            const todayDate = new Date(now.getFullYear(), tm - 1, td);
+            const diff = (bdayDate - todayDate) / (1000 * 60 * 60 * 24);
+            return diff >= 0 && diff <= 7;
+        }).map(c => ({ ...c, isToday: c.birthday.slice(5) === todayMD }));
+        res.json(upcoming);
+    });
+});
+
+// Servicio favorito del cliente
+app.get('/api/clients/:phone/favorite-service', requireAuth, (req, res) => {
+    const query = `
+        SELECT s.name, COUNT(*) as total
+        FROM appointments a
+        JOIN services s ON a.serviceId = s.id
+        WHERE a.clientPhone = ? AND a.status IN ('scheduled', 'completed')
+        GROUP BY a.serviceId
+        ORDER BY total DESC
+        LIMIT 1
+    `;
+    db.get(query, [req.params.phone], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(row || { name: 'Sin datos', total: 0 });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE PROMOCIONES / DESCUENTOS
+// ==========================================
+app.get('/api/promotions', requireAuth, (req, res) => {
+    db.all("SELECT * FROM promotions ORDER BY createdAt DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/promotions', requireAuth, (req, res) => {
+    const { code, description, discountPercent, maxUses, validUntil } = req.body;
+    if (!code || !discountPercent) return res.status(400).json({ error: 'Código y porcentaje de descuento son requeridos.' });
+    db.run("INSERT INTO promotions (code, description, discountPercent, maxUses, validUntil) VALUES (?, ?, ?, ?, ?)",
+        [code.toUpperCase(), description || '', parseInt(discountPercent), parseInt(maxUses) || 0, validUntil || null],
+        function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Ese código ya existe.' });
+                return res.status(500).json({ error: 'Error interno del servidor.' });
+            }
+            res.json({ id: this.lastID, success: true });
+        }
+    );
+});
+
+app.put('/api/promotions/:id/toggle', requireAuth, (req, res) => {
+    db.run("UPDATE promotions SET active = CASE WHEN active = 1 THEN 0 ELSE 1 END WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/promotions/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM promotions WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// Validar código de descuento (público)
+app.post('/api/promotions/validate', (req, res) => {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Código requerido.' });
+    db.get("SELECT * FROM promotions WHERE code = ? AND active = 1", [code.toUpperCase()], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        if (!row) return res.status(404).json({ error: 'Código inválido o expirado.' });
+        if (row.maxUses > 0 && row.usageCount >= row.maxUses) return res.status(400).json({ error: 'Este código ya fue usado el máximo de veces.' });
+        if (row.validUntil && new Date(row.validUntil) < new Date()) return res.status(400).json({ error: 'Este código ya expiró.' });
+        res.json({ valid: true, discountPercent: row.discountPercent, description: row.description });
+    });
+});
+
+// ==========================================
+// ENDPOINT QR PARA RESERVAS
+// ==========================================
+app.get('/api/booking-qr', (req, res) => {
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://synory.tech';
+    res.json({ url: `${FRONTEND_URL}/reserva` });
+});
+
+// ==========================================
 // ENDPOINTS DE WHATSAPP (PROTEGIDOS)
 // ==========================================
 app.get('/api/whatsapp/status', requireAuth, (req, res) => {
@@ -807,6 +1140,8 @@ app.post('/api/whatsapp/unlink', requireAuth, async (req, res) => {
 // ==========================================
 // TAREAS EN SEGUNDO PLANO (CRON JOBS)
 // ==========================================
+
+// Cada minuto: notificaciones 15min y 5min
 cron.schedule('* * * * *', () => {
     if (!isReady()) return;
 
@@ -842,6 +1177,49 @@ cron.schedule('* * * * *', () => {
             }
         });
     });
+});
+
+// Cada hora: recordatorio 24hs y cumpleaños
+cron.schedule('0 * * * *', () => {
+    if (!isReady()) return;
+
+    const now = new Date();
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+    // Recordatorio 24hs antes
+    db.all(
+        `SELECT a.*, s.name as serviceName FROM appointments a JOIN services s ON a.serviceId = s.id 
+         WHERE a.appointmentDate = ? AND a.status = 'scheduled' AND a.notification24hSent = 0`,
+        [tomorrowStr],
+        (err, appointments) => {
+            if (err) return console.error('Error cron 24h:', err);
+            appointments.forEach(app => {
+                if (app.clientPhone) {
+                    const cleanPhone = app.clientPhone.replace(/\D/g, '');
+                    const msg = `*YSY BARBER* ✂️\n\n¡Hola ${app.clientName}!\n\nTe recordamos que mañana tenés turno:\n*📅 Fecha:* ${app.appointmentDate}\n*⏰ Hora:* ${app.appointmentTime}\n*💈 Servicio:* ${app.serviceName}\n\n¡Te esperamos!`;
+                    sendWhatsAppMessage(cleanPhone, msg);
+                    db.run("UPDATE appointments SET notification24hSent = 1 WHERE id = ?", [app.id]);
+                }
+            });
+        }
+    );
+
+    // Cumpleaños: enviar mensaje a las 9am
+    if (now.getHours() === 9) {
+        const todayMD = `${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        db.all("SELECT * FROM clients WHERE birthday IS NOT NULL", [], (err, clients) => {
+            if (err) return;
+            clients.forEach(c => {
+                if (c.birthday && c.birthday.slice(5) === todayMD && c.phone) {
+                    const cleanPhone = c.phone.replace(/\D/g, '');
+                    const msg = `*YSY BARBER* ✂️🎂\n\n¡Feliz cumpleaños ${c.name}!\n\nQue la pases genial. Como regalo, te invitamos a tu próximo corte con un *descuento especial*.\n\n¡Pasá a visitarnos! 🎉`;
+                    sendWhatsAppMessage(cleanPhone, msg);
+                }
+            });
+        });
+    }
 });
 
 app.listen(PORT, () => {

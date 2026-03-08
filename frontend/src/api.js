@@ -98,3 +98,51 @@ export const saveBufferMinutes = async (minutes) => { return (await api.post('/s
 
 // Estadísticas
 export const getStatsPeaks = async () => { return (await api.get('/stats/peaks')).data; };
+export const getNetRevenue = async () => { return (await api.get('/stats/net-revenue')).data; };
+
+// Agenda Semanal
+export const getWeekAppointments = async (startDate, endDate) => { return (await api.get(`/appointments/week?startDate=${startDate}&endDate=${endDate}`)).data; };
+
+// Exportar CSV
+export const exportAppointmentsCSV = async (month, year) => {
+    const params = month && year ? `?month=${month}&year=${year}` : '';
+    const response = await api.get(`/appointments/export${params}`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `turnos_${month || 'all'}_${year || 'all'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+};
+
+// Galería
+export const getGallery = async () => { return (await api.get('/gallery')).data; };
+export const addGalleryItem = async (data) => { return (await api.post('/gallery', data)).data; };
+export const deleteGalleryItem = async (id) => { return (await api.delete(`/gallery/${id}`)).data; };
+
+// Reseñas
+export const getReviews = async () => { return (await api.get('/reviews')).data; };
+export const addReview = async (data) => { return (await api.post('/reviews', data)).data; };
+export const deleteReview = async (id) => { return (await api.delete(`/reviews/${id}`)).data; };
+
+// Clientes (Cumpleaños)
+export const getClients = async () => { return (await api.get('/clients')).data; };
+export const addClient = async (data) => { return (await api.post('/clients', data)).data; };
+export const updateClient = async (id, data) => { return (await api.put(`/clients/${id}`, data)).data; };
+export const deleteClient = async (id) => { return (await api.delete(`/clients/${id}`)).data; };
+export const getUpcomingBirthdays = async () => { try { return (await api.get('/clients/birthdays/upcoming')).data; } catch(e) { return []; } };
+export const getFavoriteService = async (phone) => { return (await api.get(`/clients/${encodeURIComponent(phone)}/favorite-service`)).data; };
+
+// Promociones
+export const getPromotions = async () => { return (await api.get('/promotions')).data; };
+export const addPromotion = async (data) => { return (await api.post('/promotions', data)).data; };
+export const togglePromotion = async (id) => { return (await api.put(`/promotions/${id}/toggle`)).data; };
+export const deletePromotion = async (id) => { return (await api.delete(`/promotions/${id}`)).data; };
+export const validatePromoCode = async (code) => { try { return (await api.post('/promotions/validate', { code })).data; } catch(e) { return { valid: false, error: e.response?.data?.error || 'Código inválido' }; } };
+
+// QR Reserva
+export const getBookingQR = async () => { return (await api.get('/booking-qr')).data; };
+
+// Marcar turno como completado
+export const markAppointmentCompleted = async (id) => { return (await api.put(`/appointments/${id}/status`, { status: 'completed' })).data; };
