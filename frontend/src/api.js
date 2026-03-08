@@ -44,6 +44,11 @@ export const createAppointment = async (appointmentData) => {
     return response.data;
 };
 
+export const createManualAppointment = async (appointmentData) => {
+    const response = await api.post('/appointments/manual', appointmentData);
+    return response.data;
+};
+
 export const getBookedTimes = async (date) => {
     const response = await api.get(`/appointments/booked?date=${date}`);
     return response.data;

@@ -264,6 +264,17 @@ app.post('/api/appointments', (req, res) => {
     });
 });
 
+app.post('/api/appointments/manual', (req, res) => {
+    const { clientName, clientPhone, serviceId, appointmentDate, appointmentTime } = req.body;
+    const sql = `INSERT INTO appointments (clientName, clientPhone, serviceId, appointmentDate, appointmentTime, status) 
+                 VALUES (?, ?, ?, ?, ?, 'scheduled')`;
+
+    db.run(sql, [clientName, clientPhone || '', serviceId, appointmentDate, appointmentTime], function (err) {
+        if (err) return res.status(400).json({ error: err.message });
+        res.json({ success: true, id: this.lastID });
+    });
+});
+
 app.get('/api/appointments/booked', (req, res) => {
     const { date } = req.query;
     if(!date) return res.status(400).json({ error: 'Date params missing' });

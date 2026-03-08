@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment } from '../api';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -12,6 +12,8 @@ const DashboardPage = () => {
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [schedules, setSchedules] = useState([]);
     const [newSchedule, setNewSchedule] = useState('');
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+    const [newManualAppointment, setNewManualAppointment] = useState({ clientName: '', clientPhone: '', serviceId: '', appointmentDate: '', appointmentTime: '' });
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -59,6 +61,20 @@ const DashboardPage = () => {
         if(window.confirm('¿Eliminar este turno? (Esto liberará el horario)')) {
             await deleteAppointment(id);
             getAppointments().then(data => setAppointments(data));
+        }
+    };
+
+    const handleSaveManualAppointment = async (e) => {
+        e.preventDefault();
+        try {
+            await createManualAppointment(newManualAppointment);
+            setNewManualAppointment({ clientName: '', clientPhone: '', serviceId: '', appointmentDate: '', appointmentTime: '' });
+            setIsManualModalOpen(false);
+            const data = await getAppointments();
+            setAppointments(data);
+        } catch (error) {
+            console.error(error);
+            alert("Error al crear turno manual");
         }
     };
 
@@ -227,9 +243,18 @@ const DashboardPage = () => {
 
                 {activeTab === 'calendar' && (
                     <div className="animate-fade-in">
-                        <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Clock color="var(--accent-primary)" /> Próximos Cortes
-                        </h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                <Clock color="var(--accent-primary)" /> Próximos Cortes
+                            </h2>
+                            <button
+                                onClick={() => setIsManualModalOpen(true)}
+                                className="btn-primary"
+                                style={{ width: 'auto', padding: '10px 20px', display: 'flex', gap: '8px', alignItems: 'center' }}
+                            >
+                                <Plus size={18} /> Turno Manual
+                            </button>
+                        </div>
                         <div style={{ display: 'grid', gap: '15px' }}>
                             {appointments.map(app => (
                                 <div key={app.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -466,6 +491,52 @@ const DashboardPage = () => {
                 )}
 
             </main>
+
+            {/* Modal de Turno Manual */}
+            {isManualModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div className="card glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2>Nuevo Turno Manual</h2>
+                            <button onClick={() => setIsManualModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveManualAppointment}>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label className="input-label">Nombre del Cliente</label>
+                                <input type="text" className="input-field" value={newManualAppointment.clientName} onChange={e => setNewManualAppointment({ ...newManualAppointment, clientName: e.target.value })} required />
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label className="input-label">Teléfono (Opcional)</label>
+                                <input type="text" className="input-field" placeholder="3875..." value={newManualAppointment.clientPhone} onChange={e => setNewManualAppointment({ ...newManualAppointment, clientPhone: e.target.value })} />
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label className="input-label">Servicio</label>
+                                <select className="input-field" value={newManualAppointment.serviceId} onChange={e => setNewManualAppointment({ ...newManualAppointment, serviceId: e.target.value })} required>
+                                    <option value="">Seleccione...</option>
+                                    {services.map(s => <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label className="input-label">Fecha</label>
+                                    <input type="date" className="input-field" value={newManualAppointment.appointmentDate} onChange={e => setNewManualAppointment({ ...newManualAppointment, appointmentDate: e.target.value })} required />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label className="input-label">Horario</label>
+                                    <select className="input-field" value={newManualAppointment.appointmentTime} onChange={e => setNewManualAppointment({ ...newManualAppointment, appointmentTime: e.target.value })} required>
+                                        <option value="">Seleccione...</option>
+                                        {schedules.map(s => <option key={s.id} value={s.time}>{s.time}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" className="btn-primary">Guardar Turno</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
