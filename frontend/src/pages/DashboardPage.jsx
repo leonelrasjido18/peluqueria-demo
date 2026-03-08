@@ -14,6 +14,9 @@ const DashboardPage = () => {
     const [newSchedule, setNewSchedule] = useState('');
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const [newManualAppointment, setNewManualAppointment] = useState({ clientName: '', clientPhone: '', serviceId: '', appointmentDate: '', appointmentTime: '' });
+    const [lastAppointmentCount, setLastAppointmentCount] = useState(0);
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
 
     // WhatsApp State
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
@@ -33,6 +36,7 @@ const DashboardPage = () => {
     useEffect(() => {
         getAppointments().then(data => {
             setAppointments(data);
+            setLastAppointmentCount(data.length);
         }).catch(err => console.error(err));
         
         loadServices();
@@ -143,6 +147,58 @@ const DashboardPage = () => {
         await startWhatsAppConnection();
     };
 
+    // --- Lógica de Notificaciones Sonoras y Visuales ---
+    const playNotificationSound = () => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // La5
+            oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4); // La4
+
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.4);
+        } catch (e) {
+            console.error("Audio block by browser or not supported", e);
+        }
+    };
+
+    // Polling de nuevos turnos para notificaciones
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                const data = await getAppointments();
+                
+                // Si hay más turnos que antes (y no es el inicio)
+                if (lastAppointmentCount > 0 && data.length > lastAppointmentCount) {
+                    const newApp = data[0]; // El más reciente
+                    setToastMessage(`¡Nuevo turno: ${newApp.clientName} (${newApp.serviceName})!`);
+                    setShowToast(true);
+                    playNotificationSound();
+                    
+                    // Ocultar mensaje después de 6 segundos
+                    setTimeout(() => setShowToast(false), 6000);
+                }
+                
+                setAppointments(data);
+                setLastAppointmentCount(data.length);
+            } catch (err) {
+                console.error("Error polling appointments:", err);
+            }
+        }, 15000); // Consultar cada 15 segundos
+
+        return () => clearInterval(interval);
+    }, [lastAppointmentCount]);
+    // --------------------------------------------------
+
     const handleUnlinkWhatsApp = async () => {
         if(window.confirm('¿Seguro que querés desvincular WhatsApp?')) {
             setLoadingWa(true);
@@ -180,6 +236,30 @@ const DashboardPage = () => {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+            {/* Visual Notification (Toast) */}
+            {showToast && (
+                <div 
+                    className="animate-fade-in"
+                    style={{
+                        position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
+                        backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent-primary)',
+                        padding: '15px 25px', borderRadius: '12px', boxShadow: 'var(--shadow-glow)',
+                        display: 'flex', alignItems: 'center', gap: '15px', color: 'var(--text-primary)'
+                    }}
+                >
+                    <div style={{ backgroundColor: 'rgba(192, 123, 247, 0.1)', padding: '10px', borderRadius: '50%' }}>
+                        <CalendarIcon color="var(--accent-primary)" size={24} />
+                    </div>
+                    <div>
+                        <b style={{ display: 'block', color: 'var(--accent-primary)' }}>¡NUEVA RESERVA!</b>
+                        <span style={{ fontSize: '0.9rem' }}>{toastMessage}</span>
+                    </div>
+                    <button onClick={() => setShowToast(false)} style={{ marginLeft: '10px', color: 'var(--text-secondary)' }}>
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+
             {/* Mobile Overlay */}
             <div 
                 className={`mobile-overlay ${isMobileMenuOpen ? 'mobile-open' : ''}`}
