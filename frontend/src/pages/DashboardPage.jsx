@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken } from '../api';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X, Ban, FileText, TrendingUp, Wallet } from 'lucide-react';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken, getBlockedTimes, addBlockedTime, deleteBlockedTime, getClientHistory, getClientNotes, addClientNote, deleteClientNote, getExpenses, addExpense, deleteExpense, getBufferMinutes, saveBufferMinutes, getStatsPeaks } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -27,6 +27,26 @@ const DashboardPage = () => {
     const [isSavingMp, setIsSavingMp] = useState(false);
     const [mpSavedMessage, setMpSavedMessage] = useState('');
 
+    // Bloqueo de Horarios State
+    const [blockedTimes, setBlockedTimes] = useState([]);
+    const [newBlock, setNewBlock] = useState({ blockedDate: '', timeFrom: '', timeTo: '', reason: '', fullDay: false });
+
+    // Ficha de Cliente State
+    const [clientModal, setClientModal] = useState(null); // { phone, name }
+    const [clientHistory, setClientHistory] = useState([]);
+    const [clientNotes, setClientNotes] = useState([]);
+    const [newNote, setNewNote] = useState('');
+
+    // Gastos State
+    const [expenses, setExpenses] = useState([]);
+    const [newExpense, setNewExpense] = useState({ description: '', amount: '', expenseDate: new Date().toISOString().split('T')[0] });
+
+    // Buffer State
+    const [bufferMinutes, setBufferMinutesState] = useState(0);
+
+    // Estadísticas State
+    const [peakStats, setPeakStats] = useState({ byDay: [], byHour: [], byMonth: [] });
+
     // Derived stats
     const todayAppointments = appointments.length;
     const completedAppointments = appointments.filter(a => a.status === 'completed').length;
@@ -42,6 +62,10 @@ const DashboardPage = () => {
         loadServices();
         loadSchedules();
         loadMpToken();
+        loadBlockedTimes();
+        loadExpenses();
+        loadBuffer();
+        loadPeakStats();
 
         // Check for MP oauth returns
         const params = new URLSearchParams(window.location.search);
@@ -234,6 +258,68 @@ const DashboardPage = () => {
         window.location.href = '/login';
     };
 
+    // --- Nuevas funciones ---
+    const loadBlockedTimes = () => {
+        getBlockedTimes().then(setBlockedTimes).catch(console.error);
+    };
+    const handleAddBlock = async (e) => {
+        e.preventDefault();
+        await addBlockedTime(newBlock);
+        setNewBlock({ blockedDate: '', timeFrom: '', timeTo: '', reason: '', fullDay: false });
+        loadBlockedTimes();
+    };
+    const handleDeleteBlock = async (id) => {
+        if (window.confirm('¿Eliminar este bloqueo?')) { await deleteBlockedTime(id); loadBlockedTimes(); }
+    };
+
+    const openClientModal = async (phone, name) => {
+        setClientModal({ phone, name });
+        setNewNote('');
+        const [hist, notes] = await Promise.all([getClientHistory(phone), getClientNotes(phone)]);
+        setClientHistory(hist);
+        setClientNotes(notes);
+    };
+    const handleAddNote = async () => {
+        if (!newNote.trim() || !clientModal) return;
+        await addClientNote(clientModal.phone, newNote);
+        setNewNote('');
+        setClientNotes(await getClientNotes(clientModal.phone));
+    };
+    const handleDeleteNote = async (id) => {
+        await deleteClientNote(id);
+        if (clientModal) setClientNotes(await getClientNotes(clientModal.phone));
+    };
+
+    const loadExpenses = () => {
+        const now = new Date();
+        getExpenses(String(now.getMonth() + 1), String(now.getFullYear())).then(setExpenses).catch(console.error);
+    };
+    const handleAddExpense = async (e) => {
+        e.preventDefault();
+        if (!newExpense.description || !newExpense.amount) return;
+        await addExpense(newExpense);
+        setNewExpense({ description: '', amount: '', expenseDate: new Date().toISOString().split('T')[0] });
+        loadExpenses();
+    };
+    const handleDeleteExpense = async (id) => {
+        if (window.confirm('¿Eliminar este gasto?')) { await deleteExpense(id); loadExpenses(); }
+    };
+
+    const loadBuffer = async () => {
+        const data = await getBufferMinutes();
+        setBufferMinutesState(data.minutes || 0);
+    };
+    const handleSaveBuffer = async () => {
+        await saveBufferMinutes(bufferMinutes);
+        alert('Buffer de limpieza guardado: ' + bufferMinutes + ' minutos');
+    };
+
+    const loadPeakStats = () => {
+        getStatsPeaks().then(setPeakStats).catch(console.error);
+    };
+
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
             {/* Visual Notification (Toast) */}
@@ -342,6 +428,42 @@ const DashboardPage = () => {
                     >
                         <Settings size={20} /> Configuración
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('blocked'); setIsMobileMenuOpen(false); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'blocked' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'blocked' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Ban size={20} /> Días Libres
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('expenses'); setIsMobileMenuOpen(false); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'expenses' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'expenses' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <Wallet size={20} /> Gastos
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('peaks'); setIsMobileMenuOpen(false); loadPeakStats(); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                            backgroundColor: activeTab === 'peaks' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                            color: activeTab === 'peaks' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            transition: 'var(--transition)',
+                            width: '100%', textAlign: 'left', fontWeight: '500'
+                        }}
+                    >
+                        <TrendingUp size={20} /> Estadísticas
+                    </button>
                 </nav>
 
                 <button
@@ -413,6 +535,15 @@ const DashboardPage = () => {
                                             }}>
                                                 {app.status === 'completed' ? 'Completado' : app.status === 'pending_payment' ? 'Abonando Seña...' : 'Confirmado'}
                                             </span>
+                                            {app.clientPhone && (
+                                                <button 
+                                                    onClick={() => openClientModal(app.clientPhone, app.clientName)}
+                                                    style={{ padding: '6px 10px', borderRadius: '20px', backgroundColor: 'rgba(192, 123, 247, 0.1)', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}
+                                                    title="Ver ficha del cliente"
+                                                >
+                                                    <FileText size={14} />
+                                                </button>
+                                            )}
                                             <button 
                                                 onClick={() => handleDeleteAppointmentObj(app.id)}
                                                 style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
@@ -730,6 +861,248 @@ const DashboardPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* ====== MODAL FICHA DE CLIENTE ====== */}
+            {clientModal && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '20px' }}>
+                    <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '550px', maxHeight: '80vh', overflow: 'auto', padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                <FileText color="var(--accent-primary)" /> Ficha: {clientModal.name}
+                            </h2>
+                            <button onClick={() => setClientModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
+                        </div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>📞 {clientModal.phone}</p>
+
+                        {/* Historial */}
+                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📅 Historial de Visitas ({clientHistory.length})</h4>
+                        {clientHistory.length === 0 ? <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sin visitas previas</p> : (
+                            <div style={{ display: 'grid', gap: '8px', marginBottom: '20px', maxHeight: '150px', overflow: 'auto' }}>
+                                {clientHistory.map(h => (
+                                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                                        <span>{h.appointmentDate} {h.appointmentTime}</span>
+                                        <span style={{ color: 'var(--accent-primary)' }}>{h.serviceName}</span>
+                                        <span style={{ color: h.status === 'completed' ? 'var(--success)' : 'var(--text-secondary)' }}>{h.status === 'completed' ? '✅' : h.status === 'cancelled' ? '❌' : '📅'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Notas */}
+                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📝 Notas del Cliente</h4>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                            <input className="input-field" placeholder="Ej: Le gusta degradado al 0..." value={newNote} onChange={e => setNewNote(e.target.value)} style={{ flex: 1 }} />
+                            <button onClick={handleAddNote} className="btn-primary" style={{ padding: '10px 20px', width: 'auto' }}>Agregar</button>
+                        </div>
+                        {clientNotes.map(n => (
+                            <div key={n.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.9rem' }}>{n.note}</span>
+                                <button onClick={() => handleDeleteNote(n.id)} style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '4px' }}><X size={14} /></button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ====== TAB: DÍAS LIBRES ====== */}
+            {activeTab === 'blocked' && (
+                <div className="animate-fade-in" style={{ marginTop: '0' }}>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                        <Ban color="var(--accent-primary)" /> Días Libres / Bloqueo de Horarios
+                    </h2>
+
+                    <form onSubmit={handleAddBlock} className="card" style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '150px' }}>
+                                <label className="input-label">Fecha</label>
+                                <input type="date" className="input-field" value={newBlock.blockedDate} onChange={e => setNewBlock({...newBlock, blockedDate: e.target.value})} required />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0' }}>
+                                <input type="checkbox" checked={newBlock.fullDay} onChange={e => setNewBlock({...newBlock, fullDay: e.target.checked})} style={{ accentColor: 'var(--accent-primary)', width: '18px', height: '18px' }} />
+                                <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Día Completo</label>
+                            </div>
+                            {!newBlock.fullDay && (
+                                <>
+                                    <div style={{ minWidth: '120px' }}>
+                                        <label className="input-label">Desde</label>
+                                        <input type="time" className="input-field" value={newBlock.timeFrom} onChange={e => setNewBlock({...newBlock, timeFrom: e.target.value})} />
+                                    </div>
+                                    <div style={{ minWidth: '120px' }}>
+                                        <label className="input-label">Hasta</label>
+                                        <input type="time" className="input-field" value={newBlock.timeTo} onChange={e => setNewBlock({...newBlock, timeTo: e.target.value})} />
+                                    </div>
+                                </>
+                            )}
+                            <div style={{ minWidth: '150px', flex: 1 }}>
+                                <label className="input-label">Motivo (opcional)</label>
+                                <input className="input-field" placeholder="Ej: Trámite personal" value={newBlock.reason} onChange={e => setNewBlock({...newBlock, reason: e.target.value})} />
+                            </div>
+                            <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
+                                <Plus size={16} /> Bloquear
+                            </button>
+                        </div>
+                    </form>
+
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                        {blockedTimes.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>No hay bloqueos configurados. ¡Todos los días están disponibles!</p>}
+                        {blockedTimes.map(b => (
+                            <div key={b.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Ban size={20} color="var(--error)" />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ marginBottom: '4px' }}>{b.blockedDate}</h3>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                            {b.fullDay ? '🚫 Día Completo' : `⏰ ${b.timeFrom} - ${b.timeTo}`}
+                                            {b.reason && ` • ${b.reason}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button onClick={() => handleDeleteBlock(b.id)} style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ====== TAB: GASTOS ====== */}
+            {activeTab === 'expenses' && (
+                <div className="animate-fade-in">
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                        <Wallet color="var(--accent-primary)" /> Registro de Gastos
+                    </h2>
+
+                    {/* Resumen */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ingresos del Mes</h4>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--success)' }}>${todayRevenue}</div>
+                        </div>
+                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Gastos del Mes</h4>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--error)' }}>-${totalExpenses}</div>
+                        </div>
+                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ganancia Neta</h4>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: (todayRevenue - totalExpenses) >= 0 ? 'var(--success)' : 'var(--error)' }}>${todayRevenue - totalExpenses}</div>
+                        </div>
+                    </div>
+
+                    {/* Formulario */}
+                    <form onSubmit={handleAddExpense} className="card" style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 2, minWidth: '200px' }}>
+                                <label className="input-label">Descripción</label>
+                                <input className="input-field" placeholder="Ej: Cuchillas nuevas" value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} required />
+                            </div>
+                            <div style={{ flex: 1, minWidth: '120px' }}>
+                                <label className="input-label">Monto ($)</label>
+                                <input type="number" className="input-field" placeholder="5000" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} required />
+                            </div>
+                            <div style={{ flex: 1, minWidth: '150px' }}>
+                                <label className="input-label">Fecha</label>
+                                <input type="date" className="input-field" value={newExpense.expenseDate} onChange={e => setNewExpense({...newExpense, expenseDate: e.target.value})} required />
+                            </div>
+                            <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
+                                <Plus size={16} /> Agregar
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* Lista */}
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                        {expenses.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>¡No hay gastos registrados este mes!</p>}
+                        {expenses.map(e => (
+                            <div key={e.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h3 style={{ marginBottom: '4px' }}>{e.description}</h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{e.expenseDate}</p>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--error)' }}>-${e.amount}</span>
+                                    <button onClick={() => handleDeleteExpense(e.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={16} /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ====== TAB: ESTADÍSTICAS ====== */}
+            {activeTab === 'peaks' && (
+                <div className="animate-fade-in">
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                        <TrendingUp color="var(--accent-primary)" /> Estadísticas de Picos
+                    </h2>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                        {/* Por día de semana */}
+                        <div className="card">
+                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>📅 Turnos por Día de la Semana</h3>
+                            {peakStats.byDay.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                <div style={{ display: 'grid', gap: '8px' }}>
+                                    {peakStats.byDay.map(d => {
+                                        const maxDay = Math.max(...peakStats.byDay.map(x => x.total));
+                                        return (
+                                            <div key={d.dayNum} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ width: '90px', fontSize: '0.9rem', fontWeight: '600' }}>{d.dayName}</span>
+                                                <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${(d.total / maxDay) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                        {d.total}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Por hora */}
+                        <div className="card">
+                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>⏰ Turnos por Horario</h3>
+                            {peakStats.byHour.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                <div style={{ display: 'grid', gap: '8px' }}>
+                                    {peakStats.byHour.map(h => {
+                                        const maxHour = Math.max(...peakStats.byHour.map(x => x.total));
+                                        return (
+                                            <div key={h.hour} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ width: '55px', fontSize: '0.9rem', fontWeight: '600' }}>{h.hour}</span>
+                                                <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${(h.total / maxHour) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                        {h.total}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Resumen Mensual */}
+                        <div className="card" style={{ gridColumn: '1 / -1' }}>
+                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>💰 Resumen Mensual (Turnos completados)</h3>
+                            {peakStats.byMonth.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                                    {peakStats.byMonth.map(m => (
+                                        <div key={m.month} className="glass-panel" style={{ padding: '15px', textAlign: 'center', borderRadius: '12px' }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{m.month}</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>${m.totalRevenue}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{m.totalAppointments} turnos</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </main>
 
         </div>
     );

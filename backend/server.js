@@ -145,6 +145,33 @@ function initDatabase() {
             time TEXT UNIQUE
         )`);
 
+        // Tabla de Bloqueo de Horarios (Días libres / horas bloqueadas)
+        db.run(`CREATE TABLE IF NOT EXISTS blocked_times (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blockedDate TEXT NOT NULL,
+            timeFrom TEXT,
+            timeTo TEXT,
+            reason TEXT,
+            fullDay INTEGER DEFAULT 0
+        )`);
+
+        // Tabla de Notas de Clientes (Ficha)
+        db.run(`CREATE TABLE IF NOT EXISTS client_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clientPhone TEXT NOT NULL,
+            note TEXT NOT NULL,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
+        // Tabla de Gastos
+        db.run(`CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT NOT NULL,
+            amount REAL NOT NULL,
+            expenseDate TEXT NOT NULL,
+            createdAt TEXT DEFAULT (datetime('now'))
+        )`);
+
         // Insertar horarios por defecto si no existen
         db.get("SELECT COUNT(*) AS count FROM schedules", (err, row) => {
             if (row && row.count === 0) {
@@ -395,14 +422,69 @@ app.get('/api/appointments/booked', (req, res) => {
     const { date } = req.query;
     if(!date) return res.status(400).json({ error: 'Fecha requerida.' });
     
-    const query = `
-        SELECT appointmentTime 
-        FROM appointments 
-        WHERE appointmentDate = ? AND status IN ('scheduled', 'completed', 'pending_payment')
-    `;
-    db.all(query, [date], (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
-        res.json(rows.map(r => r.appointmentTime));
+    // Primero verificar si el día completo está bloqueado
+    db.get("SELECT id FROM blocked_times WHERE blockedDate = ? AND fullDay = 1", [date], (err, blocked) => {
+        if (blocked) {
+            // Si el día está bloqueado, devolver TODOS los horarios como ocupados
+            db.all("SELECT time FROM schedules", [], (err, schedules) => {
+                if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+                return res.json(schedules.map(s => s.time));
+            });
+            return;
+        }
+
+        // Obtener horarios bloqueados parcialmente
+        db.all("SELECT timeFrom, timeTo FROM blocked_times WHERE blockedDate = ? AND fullDay = 0", [date], (err, blockedRanges) => {
+            // Obtener turnos reservados
+            const query = `SELECT appointmentTime FROM appointments WHERE appointmentDate = ? AND status IN ('scheduled', 'completed', 'pending_payment')`;
+            db.all(query, [date], (err, rows) => {
+                if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+                
+                let bookedTimes = rows.map(r => r.appointmentTime);
+                
+                // Agregar horarios que caen dentro de rangos bloqueados
+                if (blockedRanges && blockedRanges.length > 0) {
+                    db.all("SELECT time FROM schedules", [], (err, allSchedules) => {
+                        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+                        allSchedules.forEach(s => {
+                            blockedRanges.forEach(br => {
+                                if (s.time >= br.timeFrom && s.time <= br.timeTo && !bookedTimes.includes(s.time)) {
+                                    bookedTimes.push(s.time);
+                                }
+                            });
+                        });
+
+                        // Buffer de limpieza: bloquear slot siguiente al último turno del día
+                        db.get("SELECT value FROM settings WHERE key = 'buffer_minutes'", (err, bufferRow) => {
+                            const bufferMinutes = bufferRow ? parseInt(bufferRow.value) : 0;
+                            if (bufferMinutes > 0 && rows.length > 0) {
+                                rows.forEach(r => {
+                                    const [h, m] = r.appointmentTime.split(':').map(Number);
+                                    const bufferTime = new Date(2000, 0, 1, h, m + bufferMinutes);
+                                    const bufferStr = `${String(bufferTime.getHours()).padStart(2,'0')}:${String(bufferTime.getMinutes()).padStart(2,'0')}`;
+                                    if (!bookedTimes.includes(bufferStr)) bookedTimes.push(bufferStr);
+                                });
+                            }
+                            res.json(bookedTimes);
+                        });
+                    });
+                } else {
+                    // Solo buffer sin bloqueos parciales
+                    db.get("SELECT value FROM settings WHERE key = 'buffer_minutes'", (err, bufferRow) => {
+                        const bufferMinutes = bufferRow ? parseInt(bufferRow.value) : 0;
+                        if (bufferMinutes > 0 && rows.length > 0) {
+                            rows.forEach(r => {
+                                const [h, m] = r.appointmentTime.split(':').map(Number);
+                                const bufferTime = new Date(2000, 0, 1, h, m + bufferMinutes);
+                                const bufferStr = `${String(bufferTime.getHours()).padStart(2,'0')}:${String(bufferTime.getMinutes()).padStart(2,'0')}`;
+                                if (!bookedTimes.includes(bufferStr)) bookedTimes.push(bufferStr);
+                            });
+                        }
+                        res.json(bookedTimes);
+                    });
+                }
+            });
+        });
     });
 });
 
@@ -516,6 +598,193 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
             console.error("Error validando webhook de MercadoPago:", error.message);
         }
     }
+});
+
+// ==========================================
+// ENDPOINTS DE BLOQUEO DE HORARIOS
+// ==========================================
+app.get('/api/blocked-times', requireAuth, (req, res) => {
+    db.all("SELECT * FROM blocked_times ORDER BY blockedDate ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/blocked-times', requireAuth, (req, res) => {
+    const { blockedDate, timeFrom, timeTo, reason, fullDay } = req.body;
+    if (!blockedDate) return res.status(400).json({ error: 'Fecha requerida.' });
+    if (!fullDay && (!timeFrom || !timeTo)) return res.status(400).json({ error: 'Rango horario requerido.' });
+    
+    db.run("INSERT INTO blocked_times (blockedDate, timeFrom, timeTo, reason, fullDay) VALUES (?, ?, ?, ?, ?)",
+        [blockedDate, fullDay ? null : timeFrom, fullDay ? null : timeTo, reason || '', fullDay ? 1 : 0],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            res.json({ id: this.lastID, success: true });
+        }
+    );
+});
+
+app.delete('/api/blocked-times/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM blocked_times WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE NOTAS DE CLIENTES (FICHA)
+// ==========================================
+app.get('/api/clients/:phone/history', requireAuth, (req, res) => {
+    const phone = req.params.phone;
+    const query = `
+        SELECT a.id, a.clientName, a.appointmentDate, a.appointmentTime, a.status,
+               COALESCE(s.name, 'Servicio Eliminado') as serviceName
+        FROM appointments a
+        LEFT JOIN services s ON a.serviceId = s.id
+        WHERE a.clientPhone = ?
+        ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
+        LIMIT 20
+    `;
+    db.all(query, [phone], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.get('/api/clients/:phone/notes', requireAuth, (req, res) => {
+    db.all("SELECT * FROM client_notes WHERE clientPhone = ? ORDER BY createdAt DESC", [req.params.phone], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/clients/:phone/notes', requireAuth, (req, res) => {
+    const { note } = req.body;
+    if (!note || note.trim().length === 0) return res.status(400).json({ error: 'Nota requerida.' });
+    db.run("INSERT INTO client_notes (clientPhone, note) VALUES (?, ?)", [req.params.phone, note.trim()], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ id: this.lastID, success: true });
+    });
+});
+
+app.delete('/api/clients/notes/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM client_notes WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE GASTOS
+// ==========================================
+app.get('/api/expenses', requireAuth, (req, res) => {
+    const { month, year } = req.query;
+    let query = "SELECT * FROM expenses";
+    let params = [];
+    if (month && year) {
+        query += " WHERE strftime('%m', expenseDate) = ? AND strftime('%Y', expenseDate) = ?";
+        params = [month.padStart(2, '0'), year];
+    }
+    query += " ORDER BY expenseDate DESC, createdAt DESC";
+    db.all(query, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/expenses', requireAuth, (req, res) => {
+    const { description, amount, expenseDate } = req.body;
+    if (!description || !amount || !expenseDate) return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+    db.run("INSERT INTO expenses (description, amount, expenseDate) VALUES (?, ?, ?)",
+        [description.trim(), parseFloat(amount), expenseDate],
+        function(err) {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            res.json({ id: this.lastID, success: true });
+        }
+    );
+});
+
+app.delete('/api/expenses/:id', requireAuth, (req, res) => {
+    db.run("DELETE FROM expenses WHERE id = ?", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE BUFFER / CONFIGURACIÓN GENERAL
+// ==========================================
+app.get('/api/settings/buffer', requireAuth, (req, res) => {
+    db.get("SELECT value FROM settings WHERE key = 'buffer_minutes'", (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ minutes: row ? parseInt(row.value) : 0 });
+    });
+});
+
+app.post('/api/settings/buffer', requireAuth, (req, res) => {
+    const { minutes } = req.body;
+    const val = parseInt(minutes) || 0;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('buffer_minutes', ?)", [val.toString()], function(err) {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
+// ENDPOINTS DE ESTADÍSTICAS
+// ==========================================
+app.get('/api/stats/peaks', requireAuth, (req, res) => {
+    // Picos por día de la semana (0=domingo, 6=sábado)
+    const dayQuery = `
+        SELECT 
+            CASE cast(strftime('%w', appointmentDate) as integer)
+                WHEN 0 THEN 'Domingo'
+                WHEN 1 THEN 'Lunes'
+                WHEN 2 THEN 'Martes'
+                WHEN 3 THEN 'Miércoles'
+                WHEN 4 THEN 'Jueves'
+                WHEN 5 THEN 'Viernes'
+                WHEN 6 THEN 'Sábado'
+            END as dayName,
+            cast(strftime('%w', appointmentDate) as integer) as dayNum,
+            COUNT(*) as total
+        FROM appointments 
+        WHERE status IN ('scheduled', 'completed')
+        GROUP BY dayNum
+        ORDER BY dayNum
+    `;
+    // Picos por hora
+    const hourQuery = `
+        SELECT appointmentTime as hour, COUNT(*) as total
+        FROM appointments 
+        WHERE status IN ('scheduled', 'completed')
+        GROUP BY appointmentTime
+        ORDER BY appointmentTime
+    `;
+    // Resumen financiero mensual
+    const financeQuery = `
+        SELECT 
+            strftime('%Y-%m', appointmentDate) as month,
+            SUM(COALESCE(s.price, 0)) as totalRevenue,
+            COUNT(*) as totalAppointments
+        FROM appointments a
+        LEFT JOIN services s ON a.serviceId = s.id
+        WHERE a.status = 'completed'
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 6
+    `;
+
+    db.all(dayQuery, [], (err, byDay) => {
+        if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        db.all(hourQuery, [], (err, byHour) => {
+            if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+            db.all(financeQuery, [], (err, byMonth) => {
+                if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+                res.json({ byDay, byHour, byMonth });
+            });
+        });
+    });
 });
 
 // ==========================================
