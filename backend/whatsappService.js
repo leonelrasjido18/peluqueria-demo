@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode');
 const fs = require('fs');
@@ -17,10 +17,12 @@ async function startWhatsApp(forceReconnect = false) {
 
         whatsappClient = makeWASocket({
             auth: state,
-            printQRInTerminal: true, // Imprime en consola para logs tras bambalinas
-            logger: pino({ level: 'silent' }), // Mantiene la consola de Render o local limpia sin exceso de logs
+            printQRInTerminal: true,
+            logger: pino({ level: 'silent' }),
             version,
-            browser: Browsers.macOS('Desktop')
+            browser: ['YSY Panel', 'Chrome', '1.0.0'],
+            syncFullHistory: false, // Evita colapso al cargar mensajes viejos
+            generateHighQualityLinkPreview: true
         });
 
         // Guardar las claves si Baileys las actualiza automáticamente
@@ -44,10 +46,25 @@ async function startWhatsApp(forceReconnect = false) {
             }
 
             if (connection === 'close') {
-                console.log('❌ WhatsApp se ha cerrado o desconectado.', update.lastDisconnect?.error);
+                const shouldReconnect = (update.lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut);
+                console.log('❌ WhatsApp se ha cerrado o desconectado. ¿Reconectar?:', shouldReconnect);
                 isWhatsAppReady = false;
                 currentQrBase64 = null;
-                // Si la sesión fue borrada o cerrada desde el celular, podríamos vaciar auth_info_baileys
+                
+                if (shouldReconnect) {
+                    // Try to reconnect if not logged out
+                    setTimeout(() => startWhatsApp(true), 5000);
+                } else {
+                    // Logged out
+                    console.log('🚨 Sesión cerrada desde el celular. Limpiando credenciales...');
+                    try {
+                        if (fs.existsSync('auth_info_baileys')) {
+                            fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+                        }
+                    } catch(e) {}
+                    // Restart for fresh QR
+                    startWhatsApp(true);
+                }
             }
         });
     } catch (error) {
