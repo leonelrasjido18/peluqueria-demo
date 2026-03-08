@@ -155,9 +155,15 @@ const LandingPage = () => {
 
                 <div style={{ textAlign: 'center' }}>
                     {!showReviewForm ? (
-                        <button onClick={() => setShowReviewForm(true)} className="btn-secondary" style={{ padding: '12px 30px', borderRadius: '100px', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}>
-                            ⭐ Dejá tu Reseña
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                            <button onClick={() => setShowReviewForm(true)} className="btn-secondary" style={{ padding: '12px 30px', borderRadius: '100px', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}>
+                                ⭐ Dejá tu Reseña
+                            </button>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '400px', lineHeight: '1.5' }}>
+                                📱 También podés dejar tu reseña por WhatsApp enviando:<br />
+                                <strong style={{ color: 'var(--accent-primary)' }}>RESEÑA [1-5] [tu comentario]</strong>
+                            </p>
+                        </div>
                     ) : (
                         <form onSubmit={handleSubmitReview} style={{ maxWidth: '500px', margin: '0 auto', padding: '30px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.05)' }}>
                             <h3 style={{ marginBottom: '20px' }}>Tu Opinión Importa</h3>

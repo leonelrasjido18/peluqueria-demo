@@ -6,6 +6,7 @@ const fs = require('fs');
 let whatsappClient = null;
 let isWhatsAppReady = false;
 let currentQrBase64 = null;
+let onReviewReceived = null; // Callback para guardar reseñas recibidas por WhatsApp
 
 async function startWhatsApp(forceReconnect = false) {
     if (isWhatsAppReady && !forceReconnect) return;
@@ -67,6 +68,47 @@ async function startWhatsApp(forceReconnect = false) {
                 }
             }
         });
+
+        // Listener de mensajes entrantes para capturar reseñas
+        whatsappClient.ev.on('messages.upsert', async (m) => {
+            if (!m.messages || m.messages.length === 0) return;
+            const msg = m.messages[0];
+            if (!msg.message || msg.key.fromMe) return;
+
+            const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
+            const upperText = text.toUpperCase().trim();
+
+            // Formato: RESEÑA 5 Excelente corte, muy recomendable
+            // o: RESEÑA 4 
+            if (upperText.startsWith('RESEÑA') || upperText.startsWith('RESENA') || upperText.startsWith('REVIEW')) {
+                const parts = text.trim().split(/\s+/);
+                // parts[0] = RESEÑA, parts[1] = rating, parts[2...] = comment
+                const rating = parseInt(parts[1]);
+                if (!rating || rating < 1 || rating > 5) {
+                    const senderJid = msg.key.remoteJid;
+                    await whatsappClient.sendMessage(senderJid, { 
+                        text: '⭐ *YSY BARBER - Reseña*\n\nPara dejar tu reseña enviá:\n\n*RESEÑA [1-5] [tu comentario]*\n\nEjemplo:\n_RESEÑA 5 Excelente servicio, muy recomendable!_' 
+                    });
+                    return;
+                }
+                const comment = parts.slice(2).join(' ') || '';
+                
+                // Obtener nombre del contacto
+                const senderJid = msg.key.remoteJid;
+                const senderNumber = senderJid.replace('@s.whatsapp.net', '');
+                let senderName = msg.pushName || senderNumber;
+
+                // Guardar reseña usando el callback
+                if (onReviewReceived) {
+                    onReviewReceived(senderName, rating, comment);
+                    await whatsappClient.sendMessage(senderJid, { 
+                        text: `✅ *¡Gracias ${senderName}!*\n\nTu reseña de ${'⭐'.repeat(rating)} fue guardada exitosamente.\n\n_"${comment || 'Sin comentario'}"_\n\n¡Te esperamos pronto! ✂️` 
+                    });
+                    console.log(`⭐ Nueva reseña vía WhatsApp de ${senderName}: ${rating} estrellas`);
+                }
+            }
+        });
+
     } catch (error) {
         console.error("❌ Ocurrió un error al iniciar WhatsApp: ", error);
         isWhatsAppReady = false;
@@ -162,5 +204,6 @@ module.exports = {
     resetWhatsApp,
     unlinkWhatsApp,
     isReady: () => isWhatsAppReady,
-    getQrData: () => currentQrBase64
+    getQrData: () => currentQrBase64,
+    setOnReviewReceived: (cb) => { onReviewReceived = cb; }
 };

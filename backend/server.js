@@ -9,7 +9,7 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const rateLimit = require('express-rate-limit');
 
 // Servicios locales
-const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, unlinkWhatsApp, getQrData } = require('./whatsappService');
+const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, unlinkWhatsApp, getQrData, setOnReviewReceived } = require('./whatsappService');
 const fetch = require('node-fetch');
 
 dotenv.config();
@@ -261,6 +261,20 @@ function initDatabase() {
         })();
     });
 }
+
+// ==========================================
+// CALLBACK: Reseñas recibidas por WhatsApp
+// ==========================================
+setOnReviewReceived((clientName, rating, comment) => {
+    db.run(
+        `INSERT INTO reviews (clientName, rating, comment) VALUES (?, ?, ?)`,
+        [clientName, rating, comment],
+        (err) => {
+            if (err) console.error('❌ Error guardando reseña de WhatsApp:', err);
+            else console.log(`⭐ Reseña de WhatsApp guardada: ${clientName} - ${rating} estrellas`);
+        }
+    );
+});
 
 // ==========================================
 // ENDPOINTS DE AUTENTICACIÓN
