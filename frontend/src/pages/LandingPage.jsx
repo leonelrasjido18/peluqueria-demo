@@ -5,7 +5,7 @@ const LandingPage = () => {
     const navigate = useNavigate();
 
     return (
-        <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
+        <div style={{ minHeight: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
             {/* Navbar Minimalista */}
             <nav className="landing-navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: '800', letterSpacing: '1px' }}>
