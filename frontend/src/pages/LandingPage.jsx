@@ -16,7 +16,7 @@ const LandingPage = () => {
                 </button>
             </nav>
 
-            <main className="landing-main" style={{ flex: 1, display: 'flex', alignItems: 'stretch', minHeight: 0 }}>
+            <main className="landing-main" style={{ flex: '1 0 auto', display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 80px)' }}>
                 {/* Left Side: Content */}
                 <div className="animate-fade-in landing-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
 
