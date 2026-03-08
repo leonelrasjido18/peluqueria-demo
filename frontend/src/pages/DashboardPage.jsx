@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X, Ban, FileText, TrendingUp, Wallet, Image, Star, Gift, Tag, Download, QrCode, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken, getBlockedTimes, addBlockedTime, deleteBlockedTime, getClientHistory, getClientNotes, addClientNote, deleteClientNote, getExpenses, addExpense, deleteExpense, getBufferMinutes, saveBufferMinutes, getStatsPeaks, getNetRevenue, getWeekAppointments, exportAppointmentsCSV, getGallery, addGalleryItem, deleteGalleryItem, getReviews, deleteReview, getClients, addClient, updateClient, deleteClient, getUpcomingBirthdays, getFavoriteService, getPromotions, addPromotion, togglePromotion, deletePromotion, markAppointmentCompleted } from '../api';
+import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X, Ban, FileText, TrendingUp, Wallet, Star, Gift, Tag, Download, QrCode, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken, getBlockedTimes, addBlockedTime, deleteBlockedTime, getClientHistory, getClientNotes, addClientNote, deleteClientNote, getExpenses, addExpense, deleteExpense, getBufferMinutes, saveBufferMinutes, getStatsPeaks, getNetRevenue, getWeekAppointments, exportAppointmentsCSV, getReviews, deleteReview, getClients, addClient, updateClient, deleteClient, getUpcomingBirthdays, getFavoriteService, getPromotions, addPromotion, togglePromotion, deletePromotion, markAppointmentCompleted } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -59,9 +59,7 @@ const DashboardPage = () => {
     const [weekAppointments, setWeekAppointments] = useState([]);
 
     // Gallery State
-    const [galleryItems, setGalleryItems] = useState([]);
-    const [newGalleryUrl, setNewGalleryUrl] = useState('');
-    const [newGalleryCaption, setNewGalleryCaption] = useState('');
+
 
     // Reviews State
     const [reviews, setReviews] = useState([]);
@@ -420,17 +418,7 @@ const DashboardPage = () => {
         setAppointments(data);
     };
 
-    const loadGallery = () => { getGallery().then(setGalleryItems).catch(console.error); };
-    const handleAddGallery = async (e) => {
-        e.preventDefault();
-        if (!newGalleryUrl) return;
-        await addGalleryItem({ imageUrl: newGalleryUrl, caption: newGalleryCaption });
-        setNewGalleryUrl(''); setNewGalleryCaption('');
-        loadGallery();
-    };
-    const handleDeleteGallery = async (id) => {
-        if (window.confirm('¿Eliminar esta foto?')) { await deleteGalleryItem(id); loadGallery(); }
-    };
+
 
     const loadReviews = () => { getReviews().then(setReviews).catch(console.error); };
     const handleDeleteReview = async (id) => {
@@ -556,7 +544,6 @@ const DashboardPage = () => {
                     {/* ---- MARKETING ---- */}
                     <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', padding: '15px 15px 5px', opacity: 0.5 }}>Marketing</div>
                     {[
-                        { id: 'gallery', icon: <Image size={18} />, label: 'Galería', action: () => loadGallery() },
                         { id: 'reviews', icon: <Star size={18} />, label: 'Reseñas', action: () => loadReviews() },
                         { id: 'clients', icon: <Gift size={18} />, label: 'Clientes', action: () => { loadClients(); loadBirthdays(); } },
                         { id: 'promos', icon: <Tag size={18} />, label: 'Promociones', action: () => loadPromotions() },
@@ -1280,40 +1267,7 @@ const DashboardPage = () => {
                     </div>
                 )}
 
-                {/* ====== TAB: GALERÍA ====== */}
-                {activeTab === 'gallery' && (
-                    <div className="animate-fade-in">
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                            <Image color="var(--accent-primary)" /> Galería de Trabajos
-                        </h2>
-                        <form onSubmit={handleAddGallery} className="card" style={{ marginBottom: '20px' }}>
-                            <h3 style={{ marginBottom: '15px' }}>Agregar Foto</h3>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                                <div style={{ flex: 2, minWidth: '250px' }}>
-                                    <label className="input-label">URL de la Imagen</label>
-                                    <input className="input-field" placeholder="https://..." value={newGalleryUrl} onChange={e => setNewGalleryUrl(e.target.value)} required />
-                                </div>
-                                <div style={{ flex: 1, minWidth: '150px' }}>
-                                    <label className="input-label">Descripción</label>
-                                    <input className="input-field" placeholder="Ej: Fade moderno" value={newGalleryCaption} onChange={e => setNewGalleryCaption(e.target.value)} />
-                                </div>
-                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto' }}><Plus size={16} /> Subir</button>
-                            </div>
-                        </form>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-                            {galleryItems.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', gridColumn: '1/-1', padding: '40px' }}>No hay fotos en la galería aún. ¡Subí tu primer trabajo!</p>}
-                            {galleryItems.map(g => (
-                                <div key={g.id} className="card" style={{ padding: '0', overflow: 'hidden', position: 'relative' }}>
-                                    <img src={g.imageUrl} alt={g.caption} style={{ width: '100%', height: '200px', objectFit: 'cover' }} onError={e => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect fill="%23333" width="300" height="200"/><text fill="%23666" x="50%" y="50%" text-anchor="middle" dy=".35em">Error de imagen</text></svg>'; }} />
-                                    <div style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.9rem' }}>{g.caption || 'Sin descripción'}</span>
-                                        <button onClick={() => handleDeleteGallery(g.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><Trash2 size={14} /></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+
 
                 {/* ====== TAB: RESEÑAS ====== */}
                 {activeTab === 'reviews' && (

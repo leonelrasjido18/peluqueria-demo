@@ -1,18 +1,17 @@
-import { ArrowRight, Star, Clock, Smartphone, Scissors, Image, Send } from 'lucide-react';
+import { ArrowRight, Star, Clock, Smartphone, Scissors, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getGallery, getReviews, addReview } from '../api';
+import { getReviews, addReview } from '../api';
 
 const LandingPage = () => {
     const navigate = useNavigate();
-    const [gallery, setGallery] = useState([]);
+
     const [reviews, setReviews] = useState([]);
     const [showReviewForm, setShowReviewForm] = useState(false);
     const [reviewForm, setReviewForm] = useState({ clientName: '', rating: 5, comment: '' });
     const [reviewMsg, setReviewMsg] = useState('');
 
     useEffect(() => {
-        getGallery().then(r => { if (Array.isArray(r)) setGallery(r); }).catch(() => {});
         getReviews().then(r => { if (Array.isArray(r)) setReviews(r); }).catch(() => {});
     }, []);
 
@@ -104,29 +103,7 @@ const LandingPage = () => {
                 </div>
             </main>
 
-            {/* ====== GALERÍA DE TRABAJOS ====== */}
-            {gallery.length > 0 && (
-                <section style={{ padding: '60px 50px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                        <h2 style={{ fontSize: '2.2rem', fontWeight: '800', marginBottom: '10px' }}>
-                            <Image size={28} color="var(--accent-primary)" style={{ verticalAlign: 'middle', marginRight: '10px' }} />
-                            Nuestros <span style={{ color: 'var(--accent-primary)' }}>Trabajos</span>
-                        </h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Mirá lo que podemos hacer por vos</p>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-                        {gallery.slice(0, 6).map(g => (
-                            <div key={g.id} style={{ borderRadius: '15px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)', transition: 'transform 0.3s ease', cursor: 'pointer' }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                                <img src={g.imageUrl} alt={g.caption} style={{ width: '100%', height: '250px', objectFit: 'cover' }} />
-                                {g.caption && <div style={{ padding: '12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{g.caption}</div>}
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
+
 
             {/* ====== RESEÑAS ====== */}
             <section style={{ padding: '60px 50px', borderTop: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.01)' }}>
