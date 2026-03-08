@@ -72,6 +72,28 @@ const LandingPage = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Footer Minimalista */}
+            <footer style={{ 
+                padding: '20px 50px', 
+                borderTop: '1px solid rgba(255,255,255,0.05)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                backgroundColor: 'var(--bg-primary)',
+                flexWrap: 'wrap',
+                gap: '15px'
+            }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    © {new Date().getFullYear()} <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>YSY BARBER</span>. Todos los derechos reservados.
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', gap: '20px' }}>
+                    <span>📍 Salta, Argentina</span>
+                    <a href="https://synory.dev" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: '700', textDecoration: 'none' }}>
+                        Creado por synory.dev
+                    </a>
+                </div>
+            </footer>
         </div>
     );
 };
