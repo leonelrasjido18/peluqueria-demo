@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 // Servicios locales
-const { sendWhatsAppMessage, isReady, startWhatsApp, getQrData } = require('./whatsappService');
+const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, getQrData } = require('./whatsappService');
 
 dotenv.config();
 
@@ -366,8 +366,8 @@ app.get('/api/whatsapp/status', (req, res) => {
     res.json({ ready: isReady(), qrUrl: getQrData() });
 });
 
-app.post('/api/whatsapp/start', (req, res) => {
-    startWhatsApp(true); // Forzar reinicio
+app.post('/api/whatsapp/start', async (req, res) => {
+    await resetWhatsApp(); // Forzar reinicio y limpieza de sesión
     res.json({ success: true, message: "Intentando conectar o generar QR" });
 });
 

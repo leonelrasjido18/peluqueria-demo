@@ -1,6 +1,7 @@
 const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode');
+const fs = require('fs');
 
 let whatsappClient = null;
 let isWhatsAppReady = false;
@@ -59,6 +60,33 @@ async function startWhatsApp(forceReconnect = false) {
 startWhatsApp();
 
 /**
+ * Resetear WhatsApp borrando las credenciales antiguas para generar un QR Limpio
+ */
+const resetWhatsApp = async () => {
+    try {
+        if (whatsappClient) {
+            whatsappClient.ev.removeAllListeners();
+            whatsappClient.ws.close();
+        }
+    } catch(e) {}
+    
+    isWhatsAppReady = false;
+    currentQrBase64 = null;
+    whatsappClient = null;
+    
+    try {
+        if (fs.existsSync('auth_info_baileys')) {
+            fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+            console.log("🧹 Sesión antigua de WhatsApp borrada manualmente.");
+        }
+    } catch(e) {
+        console.error("No se pudo limpiar auth_info_baileys", e);
+    }
+    
+    await startWhatsApp(true);
+};
+
+/**
  * Función exportada para enviar un mensaje de WhatsApp
  */
 const sendWhatsAppMessage = async (to, message) => {
@@ -87,6 +115,7 @@ module.exports = {
     whatsappClient,
     sendWhatsAppMessage,
     startWhatsApp,
+    resetWhatsApp,
     isReady: () => isWhatsAppReady,
     getQrData: () => currentQrBase64
 };
