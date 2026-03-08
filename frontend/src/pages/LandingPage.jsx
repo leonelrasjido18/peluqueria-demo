@@ -164,8 +164,7 @@ const LandingPage = () => {
                                 ⭐ Dejá tu Reseña
                             </button>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '400px', lineHeight: '1.5' }}>
-                                📱 También podés dejar tu reseña por WhatsApp enviando:<br />
-                                <strong style={{ color: 'var(--accent-primary)' }}>RESEÑA [1-5] [tu comentario]</strong>
+                                📱 Al completar tu turno recibirás un mensaje por WhatsApp para calificar tu experiencia
                             </p>
                         </div>
                     ) : (

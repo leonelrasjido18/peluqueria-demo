@@ -7,6 +7,15 @@ let whatsappClient = null;
 let isWhatsAppReady = false;
 let currentQrBase64 = null;
 let onReviewReceived = null; // Callback para guardar reseñas recibidas por WhatsApp
+const pendingReviews = {}; // { 'number@s.whatsapp.net': { name, timestamp } }
+
+// Limpiar pendingReviews viejos cada hora (expiran en 48hs)
+setInterval(() => {
+    const now = Date.now();
+    Object.keys(pendingReviews).forEach(k => {
+        if (now - pendingReviews[k].timestamp > 48 * 60 * 60 * 1000) delete pendingReviews[k];
+    });
+}, 60 * 60 * 1000);
 
 async function startWhatsApp(forceReconnect = false) {
     if (isWhatsAppReady && !forceReconnect) return;
@@ -69,42 +78,55 @@ async function startWhatsApp(forceReconnect = false) {
             }
         });
 
+        // Números de teléfono que están esperando dejar una reseña
+        // Formato: { 'number@s.whatsapp.net': { name: 'Juan', timestamp: Date.now() } }
+
         // Listener de mensajes entrantes para capturar reseñas
         whatsappClient.ev.on('messages.upsert', async (m) => {
             if (!m.messages || m.messages.length === 0) return;
             const msg = m.messages[0];
             if (!msg.message || msg.key.fromMe) return;
 
-            const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-            const upperText = text.toUpperCase().trim();
+            const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
+            if (!text) return;
 
-            // Formato: RESEÑA 5 Excelente corte, muy recomendable
-            // o: RESEÑA 4 
-            if (upperText.startsWith('RESEÑA') || upperText.startsWith('RESENA') || upperText.startsWith('REVIEW')) {
-                const parts = text.trim().split(/\s+/);
-                // parts[0] = RESEÑA, parts[1] = rating, parts[2...] = comment
-                const rating = parseInt(parts[1]);
-                if (!rating || rating < 1 || rating > 5) {
-                    const senderJid = msg.key.remoteJid;
-                    await whatsappClient.sendMessage(senderJid, { 
-                        text: '⭐ *YSY BARBER - Reseña*\n\nPara dejar tu reseña enviá:\n\n*RESEÑA [1-5] [tu comentario]*\n\nEjemplo:\n_RESEÑA 5 Excelente servicio, muy recomendable!_' 
-                    });
-                    return;
-                }
-                const comment = parts.slice(2).join(' ') || '';
+            const senderJid = msg.key.remoteJid;
+            const senderNumber = senderJid.replace('@s.whatsapp.net', '');
+            let senderName = msg.pushName || senderNumber;
+
+            // Opción 1: El cliente responde un número del 1 al 5 (con o sin comentario)
+            // Esto funciona SIEMPRE - cualquier mensaje que empiece con 1-5
+            const match = text.match(/^([1-5])\s*(.*)?$/s);
+            if (match && pendingReviews[senderJid]) {
+                const rating = parseInt(match[1]);
+                const comment = (match[2] || '').trim();
                 
-                // Obtener nombre del contacto
-                const senderJid = msg.key.remoteJid;
-                const senderNumber = senderJid.replace('@s.whatsapp.net', '');
-                let senderName = msg.pushName || senderNumber;
-
-                // Guardar reseña usando el callback
                 if (onReviewReceived) {
-                    onReviewReceived(senderName, rating, comment);
+                    const reviewName = pendingReviews[senderJid].name || senderName;
+                    onReviewReceived(reviewName, rating, comment);
+                    delete pendingReviews[senderJid];
                     await whatsappClient.sendMessage(senderJid, { 
-                        text: `✅ *¡Gracias ${senderName}!*\n\nTu reseña de ${'⭐'.repeat(rating)} fue guardada exitosamente.\n\n_"${comment || 'Sin comentario'}"_\n\n¡Te esperamos pronto! ✂️` 
+                        text: `✅ *¡Gracias ${reviewName}!*\n\nTu calificación de ${'⭐'.repeat(rating)} fue guardada.\n${comment ? `\n_"${comment}"_\n` : ''}\n¡Te esperamos pronto! ✂️` 
                     });
-                    console.log(`⭐ Nueva reseña vía WhatsApp de ${senderName}: ${rating} estrellas`);
+                    console.log(`⭐ Reseña recibida de ${reviewName}: ${rating} estrellas`);
+                }
+                return;
+            }
+
+            // Opción 2: Formato directo con "RESEÑA" (para quienes envían sin haber sido consultados)
+            const upperText = text.toUpperCase();
+            if (upperText.startsWith('RESEÑA') || upperText.startsWith('RESENA')) {
+                const parts = text.split(/\s+/);
+                const rating = parseInt(parts[1]);
+                if (rating >= 1 && rating <= 5) {
+                    const comment = parts.slice(2).join(' ') || '';
+                    if (onReviewReceived) {
+                        onReviewReceived(senderName, rating, comment);
+                        await whatsappClient.sendMessage(senderJid, { 
+                            text: `✅ *¡Gracias ${senderName}!*\n\nTu calificación de ${'⭐'.repeat(rating)} fue guardada.\n${comment ? `\n_"${comment}"_\n` : ''}\n¡Te esperamos pronto! ✂️` 
+                        });
+                        console.log(`⭐ Reseña directa de ${senderName}: ${rating} estrellas`);
+                    }
                 }
             }
         });
@@ -197,9 +219,28 @@ const sendWhatsAppMessage = async (to, message) => {
     }
 };
 
+/**
+ * Solicitar reseña al cliente después de completar un turno
+ * Envía un mensaje amigable y registra el número como 'pendiente de reseña'
+ */
+const requestReview = async (to, clientName) => {
+    let cleanPhone = to.toString().replace(/\D/g, '');
+    if (!cleanPhone.includes('@')) {
+        cleanPhone = `${cleanPhone}@s.whatsapp.net`;
+    }
+    
+    // Registrar como pendiente de reseña
+    pendingReviews[cleanPhone] = { name: clientName, timestamp: Date.now() };
+    
+    const message = `⭐ *¡Hola ${clientName}!*\n\n¿Cómo fue tu experiencia en *YSY BARBER*?\n\nCalificanos respondiendo con un número:\n\n1️⃣ Malo\n2️⃣ Regular\n3️⃣ Bueno\n4️⃣ Muy bueno\n5️⃣ Excelente\n\n_También podés agregar un comentario después del número._\n_Ej: 5 Me encantó el corte!_`;
+    
+    return sendWhatsAppMessage(to, message);
+};
+
 module.exports = {
     whatsappClient,
     sendWhatsAppMessage,
+    requestReview,
     startWhatsApp,
     resetWhatsApp,
     unlinkWhatsApp,

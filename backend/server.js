@@ -9,7 +9,7 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const rateLimit = require('express-rate-limit');
 
 // Servicios locales
-const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, unlinkWhatsApp, getQrData, setOnReviewReceived } = require('./whatsappService');
+const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, unlinkWhatsApp, getQrData, setOnReviewReceived, requestReview } = require('./whatsappService');
 const fetch = require('node-fetch');
 
 dotenv.config();
@@ -574,6 +574,16 @@ app.put('/api/appointments/:id/status', requireAuth, (req, res) => {
     }
     db.run("UPDATE appointments SET status = ? WHERE id = ?", [status, req.params.id], function (err) {
         if (err) return res.status(500).json({ error: 'Error interno del servidor.' });
+        
+        // Si se marcó como completado, enviar solicitud de reseña por WhatsApp
+        if (status === 'completed') {
+            db.get("SELECT clientName, clientPhone FROM appointments WHERE id = ?", [req.params.id], (err, appt) => {
+                if (!err && appt && appt.clientPhone) {
+                    requestReview(appt.clientPhone, appt.clientName);
+                }
+            });
+        }
+        
         res.json({ success: true });
     });
 });
