@@ -5,7 +5,7 @@ const LandingPage = () => {
     const navigate = useNavigate();
 
     return (
-        <div style={{ backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             {/* Navbar Minimalista */}
             <nav className="landing-navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '20px 50px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: '800', letterSpacing: '1px' }}>
@@ -16,7 +16,7 @@ const LandingPage = () => {
                 </button>
             </nav>
 
-            <main className="landing-main" style={{ display: 'flex', alignItems: 'center', padding: '60px 0', minHeight: '80vh' }}>
+            <main className="landing-main" style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '60px 0' }}>
                 {/* Left Side: Content */}
                 <div className="animate-fade-in landing-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 80px' }}>
 
