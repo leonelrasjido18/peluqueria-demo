@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 // Servicios locales
-const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, getQrData } = require('./whatsappService');
+const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, unlinkWhatsApp, getQrData } = require('./whatsappService');
 const fetch = require('node-fetch');
 
 dotenv.config();
@@ -181,6 +181,13 @@ app.get('/api/settings/mercadopago', (req, res) => {
 app.post('/api/settings/mercadopago', (req, res) => {
     const { token } = req.body;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('mp_token', ?)", [token], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/settings/mercadopago', (req, res) => {
+    db.run("DELETE FROM settings WHERE key = 'mp_token'", function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });
@@ -445,6 +452,11 @@ app.get('/api/whatsapp/status', (req, res) => {
 app.post('/api/whatsapp/start', async (req, res) => {
     await resetWhatsApp(); // Forzar reinicio y limpieza de sesión
     res.json({ success: true, message: "Intentando conectar o generar QR" });
+});
+
+app.post('/api/whatsapp/unlink', async (req, res) => {
+    await unlinkWhatsApp(); // Borrar sesión y detener
+    res.json({ success: true, message: "WhatsApp desvinculado con éxito." });
 });
 
 // ==========================================

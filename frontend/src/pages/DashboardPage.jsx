@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken } from '../api';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken, unlinkWhatsAppAPI, unlinkMpToken } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -143,6 +143,15 @@ const DashboardPage = () => {
         await startWhatsAppConnection();
     };
 
+    const handleUnlinkWhatsApp = async () => {
+        if(window.confirm('¿Seguro que querés desvincular WhatsApp?')) {
+            setLoadingWa(true);
+            await unlinkWhatsAppAPI();
+            setWaStatus({ ready: false, qrUrl: null });
+            setLoadingWa(false);
+        }
+    };
+
     const handleSaveMpToken = async () => {
         setIsSavingMp(true);
         setMpSavedMessage('');
@@ -153,6 +162,14 @@ const DashboardPage = () => {
             setTimeout(() => setMpSavedMessage(''), 3000);
         } else {
             setMpSavedMessage('Error al guardar el token.');
+        }
+    };
+
+    const handleUnlinkMp = async () => {
+        if(window.confirm('¿Seguro que querés desvincular Mercado Pago?')) {
+            await unlinkMpToken();
+            setMpToken('');
+            alert('Mercado Pago desvinculado correctamente');
         }
     };
 
@@ -492,6 +509,12 @@ const DashboardPage = () => {
                                         <CheckCircle size={60} color="var(--success)" style={{ margin: '0 auto 15px' }} />
                                         <h2 style={{ color: 'var(--success)' }}>¡Sincronización Exitosa!</h2>
                                         <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>Tu bot de WhatsApp está conectado y listo para mandar mensajes de forma automática a tus clientes.</p>
+                                        <button 
+                                            onClick={handleUnlinkWhatsApp}
+                                            style={{ marginTop: '15px', background: 'transparent', color: 'var(--error)', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                                        >
+                                            Desvincular WhatsApp
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="animate-fade-in">
@@ -517,6 +540,12 @@ const DashboardPage = () => {
                                             <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '15px', display: 'inline-block', margin: '20px auto' }}>
                                                 <img src={waStatus.qrUrl} alt="WhatsApp QR Code" style={{ width: '250px', height: '250px', display: 'block' }} />
                                                 <p style={{ color: '#000', fontWeight: 'bold', marginTop: '10px' }}>Escaneá este código desde tu celular</p>
+                                                <button 
+                                                    onClick={handleUnlinkWhatsApp}
+                                                    style={{ marginTop: '10px', background: 'transparent', color: '#dc3545', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                                                >
+                                                    Cancelar y Desvincular
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -538,15 +567,23 @@ const DashboardPage = () => {
                                         <CheckCircle size={40} color="var(--success)" style={{ margin: '0 auto 10px' }} />
                                         <h3 style={{ color: 'var(--success)' }}>Cuenta de Mercado Pago Integrada</h3>
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '10px' }}>Estás listo para recibir las señas de forma automática en tu celular.</p>
-                                        <button 
-                                            onClick={() => {
-                                                const url = `https://auth.mercadopago.com/authorization?client_id=6481671956476050&response_type=code&platform_id=mp&state=config&redirect_uri=https://synory.tech/api/webhooks/mercadopago/auth`;
-                                                window.location.href = url;
-                                            }}
-                                            style={{ marginTop: '15px', background: 'transparent', color: '#009ee3', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
-                                        >
-                                            Cambiar de cuenta / Revincular
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '15px' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    const url = `https://auth.mercadopago.com/authorization?client_id=6481671956476050&response_type=code&platform_id=mp&state=config&redirect_uri=https://synory.tech/api/webhooks/mercadopago/auth`;
+                                                    window.location.href = url;
+                                                }}
+                                                style={{ background: 'transparent', color: '#009ee3', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                                            >
+                                                Cambiar de cuenta
+                                            </button>
+                                            <button 
+                                                onClick={handleUnlinkMp}
+                                                style={{ background: 'transparent', color: 'var(--error)', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                                            >
+                                                Desvincular
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <button 

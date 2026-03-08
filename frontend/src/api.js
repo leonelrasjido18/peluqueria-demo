@@ -94,6 +94,16 @@ export const startWhatsAppConnection = async () => {
     }
 };
 
+export const unlinkWhatsAppAPI = async () => {
+    try {
+        const res = await api.post('/whatsapp/unlink');
+        return res.data;
+    } catch (error) {
+        console.error("Error unlinking WhatsApp", error);
+        return { success: false };
+    }
+};
+
 export const getMpToken = async () => {
     try {
         const res = await api.get('/settings/mercadopago');
@@ -110,6 +120,16 @@ export const saveMpToken = async (token) => {
         return res.data;
     } catch (error) {
         console.error("Error saving MP token", error);
+        return { success: false };
+    }
+};
+
+export const unlinkMpToken = async () => {
+    try {
+        const res = await api.delete('/settings/mercadopago');
+        return res.data;
+    } catch (error) {
+        console.error("Error deleting MP token", error);
         return { success: false };
     }
 };

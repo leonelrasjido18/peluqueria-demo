@@ -104,6 +104,33 @@ const resetWhatsApp = async () => {
 };
 
 /**
+ * Desvincular WhatsApp limpiando sesión y deteniendo cliente
+ */
+const unlinkWhatsApp = async () => {
+    try {
+        if (whatsappClient) {
+            whatsappClient.ev.removeAllListeners();
+            // Cerrar conexión WS de baileys
+            whatsappClient.end(undefined);
+        }
+    } catch(e) {}
+    
+    isWhatsAppReady = false;
+    currentQrBase64 = null;
+    whatsappClient = null;
+    
+    try {
+        // En WhatsApp web multi-device la sesión está en esta carpeta
+        if (fs.existsSync('auth_info_baileys')) {
+            fs.rmSync('auth_info_baileys', { recursive: true, force: true });
+            console.log("🧹 WhatsApp Desvinculado - Sesión borrada.");
+        }
+    } catch(e) {
+        console.error("No se pudo desvincular auth_info_baileys", e);
+    }
+};
+
+/**
  * Función exportada para enviar un mensaje de WhatsApp
  */
 const sendWhatsAppMessage = async (to, message) => {
@@ -133,6 +160,7 @@ module.exports = {
     sendWhatsAppMessage,
     startWhatsApp,
     resetWhatsApp,
+    unlinkWhatsApp,
     isReady: () => isWhatsAppReady,
     getQrData: () => currentQrBase64
 };
