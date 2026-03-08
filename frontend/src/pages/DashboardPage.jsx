@@ -38,6 +38,17 @@ const DashboardPage = () => {
         loadServices();
         loadSchedules();
         loadMpToken();
+
+        // Check for MP oauth returns
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mp_success') === 'true') {
+            alert('¡Mercado Pago vinculado correctamente!');
+            window.history.replaceState({}, document.title, window.location.pathname);
+            activeTab !== 'config' && setActiveTab('config');
+        } else if (params.get('mp_error')) {
+            alert('Error vinculando Mercado Pago: ' + params.get('mp_error'));
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }, []);
 
     const loadMpToken = async () => {
@@ -516,36 +527,38 @@ const DashboardPage = () => {
                             <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <DollarSign size={24} color="var(--accent-primary)" /> Integración Mercado Pago
                             </h3>
-                            <div style={{ padding: '10px 0' }}>
-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                                    Ingresá acá tu <b>Access Token</b> de Mercado Pago para empezar a recibir señas directamente en tu cuenta. Lo podés conseguir en la sección "Tus Integraciones" de Mercado Pago Developers.
+                            <div style={{ padding: '10px 0', textAlign: 'center' }}>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                                    Al vincular tu cuenta, la plataforma tendrá permiso para cobrar señas automáticamente a los clientes y <b>depositar el dinero de forma segura directamente en tu Mercado Pago</b>. Cero comisiones ocultas.
                                 </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <label className="input-label">Access Token de Producción</label>
-                                    <input 
-                                        type="password" 
-                                        className="input-field" 
-                                        placeholder="APP_USR-..." 
-                                        value={mpToken} 
-                                        onChange={(e) => setMpToken(e.target.value)}
-                                        style={{ padding: '15px', fontFamily: 'monospace' }} 
-                                    />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '10px' }}>
-                                        <button
-                                            onClick={handleSaveMpToken}
-                                            className="btn-primary"
-                                            disabled={isSavingMp}
-                                            style={{ width: 'auto', padding: '10px 25px' }}
+
+                                {mpToken && mpToken.startsWith('APP_USR') ? (
+                                    <div className="animate-fade-in" style={{ backgroundColor: 'rgba(0, 204, 102, 0.1)', border: '1px solid rgba(0, 204, 102, 0.3)', padding: '20px', borderRadius: '15px' }}>
+                                        <CheckCircle size={40} color="var(--success)" style={{ margin: '0 auto 10px' }} />
+                                        <h3 style={{ color: 'var(--success)' }}>Cuenta de Mercado Pago Integrada</h3>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '10px' }}>Estás listo para recibir las señas de forma automática en tu celular.</p>
+                                        <button 
+                                            onClick={() => {
+                                                const url = `https://auth.mercadopago.com/authorization?client_id=6481671956476050&response_type=code&platform_id=mp&state=config&redirect_uri=https://synory.tech/api/webhooks/mercadopago/auth`;
+                                                window.location.href = url;
+                                            }}
+                                            style={{ marginTop: '15px', background: 'transparent', color: '#009ee3', border: 'none', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
                                         >
-                                            {isSavingMp ? 'Guardando...' : 'Guardar Token'}
+                                            Cambiar de cuenta / Revincular
                                         </button>
-                                        {mpSavedMessage && (
-                                            <span style={{ color: mpSavedMessage.includes('Error') ? 'var(--error)' : 'var(--success)', fontWeight: 'bold' }}>
-                                                {mpSavedMessage}
-                                            </span>
-                                        )}
                                     </div>
-                                </div>
+                                ) : (
+                                    <button 
+                                        className="btn-primary" 
+                                        onClick={() => {
+                                            const url = `https://auth.mercadopago.com/authorization?client_id=6481671956476050&response_type=code&platform_id=mp&state=config&redirect_uri=https://synory.tech/api/webhooks/mercadopago/auth`;
+                                            window.location.href = url;
+                                        }}
+                                        style={{ backgroundColor: '#009ee3', color: 'white', padding: '15px 30px', fontSize: '1.2rem', display: 'flex', gap: '10px', alignItems: 'center', margin: '0 auto' }}
+                                    >
+                                        Vincular Mercado Pago (Cobrar Señas)
+                                    </button>
+                                )}
                             </div>
                         </div>
 

@@ -9,8 +9,14 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 // Servicios locales
 const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, getQrData } = require('./whatsappService');
+const fetch = require('node-fetch');
 
 dotenv.config();
+
+// Mercado Pago App Credentials 
+const MP_CLIENT_ID = '6481671956476050';
+const MP_CLIENT_SECRET = 'uNUAKG2zpaG1nfMSwRyrwMU9G2T1ijMk';
+const MP_REDIRECT_URI = 'https://synory.tech/api/webhooks/mercadopago/auth';
 
 // Configuración de MercadoPago
 const getMpClient = () => {
@@ -351,8 +357,46 @@ app.delete('/api/appointments/:id', (req, res) => {
 });
 
 // ==========================================
-// ENDPOINT WEBHOOK MERCADO PAGO
+// ENDPOINT WEBHOOK MERCADO PAGO / OAUTH
 // ==========================================
+
+// Callback de Autorización Oficial (OAuth)
+app.get('/api/webhooks/mercadopago/auth', async (req, res) => {
+    const { code, state } = req.query;
+    if (!code) return res.redirect('https://synory.tech/dashboard?mp_error=no_code');
+
+    try {
+        const response = await fetch('https://api.mercadopago.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body: new URLSearchParams({
+                client_secret: MP_CLIENT_SECRET,
+                client_id: MP_CLIENT_ID,
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: MP_REDIRECT_URI
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.access_token) {
+            db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('mp_token', ?)", [data.access_token], (err) => {
+                if (err) return res.redirect('https://synory.tech/dashboard?mp_error=db_error');
+                // Éxito: Se guardó el token devuelto
+                res.redirect('https://synory.tech/dashboard?mp_success=true');
+            });
+        } else {
+            console.error('Error canjeando código MP:', data);
+            res.redirect('https://synory.tech/dashboard?mp_error=invalid_token_exchange');
+        }
+    } catch (err) {
+        console.error('Excepción canjeando código MP:', err);
+        res.redirect('https://synory.tech/dashboard?mp_error=server_exception');
+    }
+});
+
+// Webhook para Pagos Recibidos
 app.post('/api/webhooks/mercadopago', async (req, res) => {
     res.status(200).send("OK");
 
