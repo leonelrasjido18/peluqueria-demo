@@ -815,8 +815,6 @@ const DashboardPage = () => {
                     </div>
                 )}
 
-            </main>
-
             {/* Modal de Turno Manual */}
             {isManualModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
@@ -862,6 +860,200 @@ const DashboardPage = () => {
                 </div>
             )}
 
+                {/* ====== TAB: DÍAS LIBRES ====== */}
+                {activeTab === 'blocked' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Ban color="var(--accent-primary)" /> Días Libres / Bloqueo de Horarios
+                        </h2>
+
+                        <form onSubmit={handleAddBlock} className="card" style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Fecha</label>
+                                    <input type="date" className="input-field" value={newBlock.blockedDate} onChange={e => setNewBlock({...newBlock, blockedDate: e.target.value})} required />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0' }}>
+                                    <input type="checkbox" checked={newBlock.fullDay} onChange={e => setNewBlock({...newBlock, fullDay: e.target.checked})} style={{ accentColor: 'var(--accent-primary)', width: '18px', height: '18px' }} />
+                                    <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Día Completo</label>
+                                </div>
+                                {!newBlock.fullDay && (
+                                    <>
+                                        <div style={{ minWidth: '120px' }}>
+                                            <label className="input-label">Desde</label>
+                                            <input type="time" className="input-field" value={newBlock.timeFrom} onChange={e => setNewBlock({...newBlock, timeFrom: e.target.value})} />
+                                        </div>
+                                        <div style={{ minWidth: '120px' }}>
+                                            <label className="input-label">Hasta</label>
+                                            <input type="time" className="input-field" value={newBlock.timeTo} onChange={e => setNewBlock({...newBlock, timeTo: e.target.value})} />
+                                        </div>
+                                    </>
+                                )}
+                                <div style={{ minWidth: '150px', flex: 1 }}>
+                                    <label className="input-label">Motivo (opcional)</label>
+                                    <input className="input-field" placeholder="Ej: Trámite personal" value={newBlock.reason} onChange={e => setNewBlock({...newBlock, reason: e.target.value})} />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
+                                    <Plus size={16} /> Bloquear
+                                </button>
+                            </div>
+                        </form>
+
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                            {blockedTimes.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>No hay bloqueos. ¡Todos los días disponibles!</p>}
+                            {blockedTimes.map(b => (
+                                <div key={b.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Ban size={20} color="var(--error)" />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ marginBottom: '4px' }}>{b.blockedDate}</h3>
+                                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                {b.fullDay ? '🚫 Día Completo' : `⏰ ${b.timeFrom} - ${b.timeTo}`}
+                                                {b.reason && ` • ${b.reason}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleDeleteBlock(b.id)} style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: GASTOS ====== */}
+                {activeTab === 'expenses' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <Wallet color="var(--accent-primary)" /> Registro de Gastos
+                        </h2>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                            <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ingresos del Mes</h4>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--success)' }}>${todayRevenue}</div>
+                            </div>
+                            <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Gastos del Mes</h4>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--error)' }}>-${totalExpenses}</div>
+                            </div>
+                            <div className="card glass-panel" style={{ textAlign: 'center' }}>
+                                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ganancia Neta</h4>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: (todayRevenue - totalExpenses) >= 0 ? 'var(--success)' : 'var(--error)' }}>${todayRevenue - totalExpenses}</div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAddExpense} className="card" style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 2, minWidth: '200px' }}>
+                                    <label className="input-label">Descripción</label>
+                                    <input className="input-field" placeholder="Ej: Cuchillas nuevas" value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} required />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '120px' }}>
+                                    <label className="input-label">Monto ($)</label>
+                                    <input type="number" className="input-field" placeholder="5000" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} required />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <label className="input-label">Fecha</label>
+                                    <input type="date" className="input-field" value={newExpense.expenseDate} onChange={e => setNewExpense({...newExpense, expenseDate: e.target.value})} required />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
+                                    <Plus size={16} /> Agregar
+                                </button>
+                            </div>
+                        </form>
+
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                            {expenses.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>¡No hay gastos registrados este mes!</p>}
+                            {expenses.map(e => (
+                                <div key={e.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h3 style={{ marginBottom: '4px' }}>{e.description}</h3>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{e.expenseDate}</p>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--error)' }}>-${e.amount}</span>
+                                        <button onClick={() => handleDeleteExpense(e.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={16} /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ====== TAB: ESTADÍSTICAS ====== */}
+                {activeTab === 'peaks' && (
+                    <div className="animate-fade-in">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                            <TrendingUp color="var(--accent-primary)" /> Estadísticas de Picos
+                        </h2>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                            <div className="card">
+                                <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>📅 Turnos por Día de la Semana</h3>
+                                {peakStats.byDay.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        {peakStats.byDay.map(d => {
+                                            const maxDay = Math.max(...peakStats.byDay.map(x => x.total));
+                                            return (
+                                                <div key={d.dayNum} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span style={{ width: '90px', fontSize: '0.9rem', fontWeight: '600' }}>{d.dayName}</span>
+                                                    <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
+                                                        <div style={{ height: '100%', width: `${(d.total / maxDay) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                            {d.total}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="card">
+                                <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>⏰ Turnos por Horario</h3>
+                                {peakStats.byHour.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        {peakStats.byHour.map(h => {
+                                            const maxHour = Math.max(...peakStats.byHour.map(x => x.total));
+                                            return (
+                                                <div key={h.hour} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span style={{ width: '55px', fontSize: '0.9rem', fontWeight: '600' }}>{h.hour}</span>
+                                                    <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
+                                                        <div style={{ height: '100%', width: `${(h.total / maxHour) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                            {h.total}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="card" style={{ gridColumn: '1 / -1' }}>
+                                <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>💰 Resumen Mensual</h3>
+                                {peakStats.byMonth.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                                        {peakStats.byMonth.map(m => (
+                                            <div key={m.month} className="glass-panel" style={{ padding: '15px', textAlign: 'center', borderRadius: '12px' }}>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{m.month}</div>
+                                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>${m.totalRevenue}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{m.totalAppointments} turnos</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </main>
+
             {/* ====== MODAL FICHA DE CLIENTE ====== */}
             {clientModal && (
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '20px' }}>
@@ -874,8 +1066,7 @@ const DashboardPage = () => {
                         </div>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>📞 {clientModal.phone}</p>
 
-                        {/* Historial */}
-                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📅 Historial de Visitas ({clientHistory.length})</h4>
+                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📅 Historial ({clientHistory.length})</h4>
                         {clientHistory.length === 0 ? <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sin visitas previas</p> : (
                             <div style={{ display: 'grid', gap: '8px', marginBottom: '20px', maxHeight: '150px', overflow: 'auto' }}>
                                 {clientHistory.map(h => (
@@ -888,8 +1079,7 @@ const DashboardPage = () => {
                             </div>
                         )}
 
-                        {/* Notas */}
-                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📝 Notas del Cliente</h4>
+                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '10px' }}>📝 Notas</h4>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                             <input className="input-field" placeholder="Ej: Le gusta degradado al 0..." value={newNote} onChange={e => setNewNote(e.target.value)} style={{ flex: 1 }} />
                             <button onClick={handleAddNote} className="btn-primary" style={{ padding: '10px 20px', width: 'auto' }}>Agregar</button>
@@ -904,208 +1094,9 @@ const DashboardPage = () => {
                 </div>
             )}
 
-            {/* ====== TAB: DÍAS LIBRES ====== */}
-            {activeTab === 'blocked' && (
-                <div className="animate-fade-in" style={{ marginTop: '0' }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <Ban color="var(--accent-primary)" /> Días Libres / Bloqueo de Horarios
-                    </h2>
-
-                    <form onSubmit={handleAddBlock} className="card" style={{ marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                            <div style={{ flex: 1, minWidth: '150px' }}>
-                                <label className="input-label">Fecha</label>
-                                <input type="date" className="input-field" value={newBlock.blockedDate} onChange={e => setNewBlock({...newBlock, blockedDate: e.target.value})} required />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0' }}>
-                                <input type="checkbox" checked={newBlock.fullDay} onChange={e => setNewBlock({...newBlock, fullDay: e.target.checked})} style={{ accentColor: 'var(--accent-primary)', width: '18px', height: '18px' }} />
-                                <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Día Completo</label>
-                            </div>
-                            {!newBlock.fullDay && (
-                                <>
-                                    <div style={{ minWidth: '120px' }}>
-                                        <label className="input-label">Desde</label>
-                                        <input type="time" className="input-field" value={newBlock.timeFrom} onChange={e => setNewBlock({...newBlock, timeFrom: e.target.value})} />
-                                    </div>
-                                    <div style={{ minWidth: '120px' }}>
-                                        <label className="input-label">Hasta</label>
-                                        <input type="time" className="input-field" value={newBlock.timeTo} onChange={e => setNewBlock({...newBlock, timeTo: e.target.value})} />
-                                    </div>
-                                </>
-                            )}
-                            <div style={{ minWidth: '150px', flex: 1 }}>
-                                <label className="input-label">Motivo (opcional)</label>
-                                <input className="input-field" placeholder="Ej: Trámite personal" value={newBlock.reason} onChange={e => setNewBlock({...newBlock, reason: e.target.value})} />
-                            </div>
-                            <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
-                                <Plus size={16} /> Bloquear
-                            </button>
-                        </div>
-                    </form>
-
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                        {blockedTimes.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>No hay bloqueos configurados. ¡Todos los días están disponibles!</p>}
-                        {blockedTimes.map(b => (
-                            <div key={b.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Ban size={20} color="var(--error)" />
-                                    </div>
-                                    <div>
-                                        <h3 style={{ marginBottom: '4px' }}>{b.blockedDate}</h3>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                            {b.fullDay ? '🚫 Día Completo' : `⏰ ${b.timeFrom} - ${b.timeTo}`}
-                                            {b.reason && ` • ${b.reason}`}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button onClick={() => handleDeleteBlock(b.id)} style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* ====== TAB: GASTOS ====== */}
-            {activeTab === 'expenses' && (
-                <div className="animate-fade-in">
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <Wallet color="var(--accent-primary)" /> Registro de Gastos
-                    </h2>
-
-                    {/* Resumen */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
-                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ingresos del Mes</h4>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--success)' }}>${todayRevenue}</div>
-                        </div>
-                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
-                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Gastos del Mes</h4>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--error)' }}>-${totalExpenses}</div>
-                        </div>
-                        <div className="card glass-panel" style={{ textAlign: 'center' }}>
-                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ganancia Neta</h4>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: (todayRevenue - totalExpenses) >= 0 ? 'var(--success)' : 'var(--error)' }}>${todayRevenue - totalExpenses}</div>
-                        </div>
-                    </div>
-
-                    {/* Formulario */}
-                    <form onSubmit={handleAddExpense} className="card" style={{ marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                            <div style={{ flex: 2, minWidth: '200px' }}>
-                                <label className="input-label">Descripción</label>
-                                <input className="input-field" placeholder="Ej: Cuchillas nuevas" value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} required />
-                            </div>
-                            <div style={{ flex: 1, minWidth: '120px' }}>
-                                <label className="input-label">Monto ($)</label>
-                                <input type="number" className="input-field" placeholder="5000" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} required />
-                            </div>
-                            <div style={{ flex: 1, minWidth: '150px' }}>
-                                <label className="input-label">Fecha</label>
-                                <input type="date" className="input-field" value={newExpense.expenseDate} onChange={e => setNewExpense({...newExpense, expenseDate: e.target.value})} required />
-                            </div>
-                            <button type="submit" className="btn-primary" style={{ padding: '12px 20px', width: 'auto', whiteSpace: 'nowrap' }}>
-                                <Plus size={16} /> Agregar
-                            </button>
-                        </div>
-                    </form>
-
-                    {/* Lista */}
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                        {expenses.length === 0 && <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px' }}>¡No hay gastos registrados este mes!</p>}
-                        {expenses.map(e => (
-                            <div key={e.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h3 style={{ marginBottom: '4px' }}>{e.description}</h3>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{e.expenseDate}</p>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--error)' }}>-${e.amount}</span>
-                                    <button onClick={() => handleDeleteExpense(e.id)} style={{ padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><X size={16} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* ====== TAB: ESTADÍSTICAS ====== */}
-            {activeTab === 'peaks' && (
-                <div className="animate-fade-in">
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                        <TrendingUp color="var(--accent-primary)" /> Estadísticas de Picos
-                    </h2>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
-                        {/* Por día de semana */}
-                        <div className="card">
-                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>📅 Turnos por Día de la Semana</h3>
-                            {peakStats.byDay.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
-                                <div style={{ display: 'grid', gap: '8px' }}>
-                                    {peakStats.byDay.map(d => {
-                                        const maxDay = Math.max(...peakStats.byDay.map(x => x.total));
-                                        return (
-                                            <div key={d.dayNum} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <span style={{ width: '90px', fontSize: '0.9rem', fontWeight: '600' }}>{d.dayName}</span>
-                                                <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
-                                                    <div style={{ height: '100%', width: `${(d.total / maxDay) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                        {d.total}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Por hora */}
-                        <div className="card">
-                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>⏰ Turnos por Horario</h3>
-                            {peakStats.byHour.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
-                                <div style={{ display: 'grid', gap: '8px' }}>
-                                    {peakStats.byHour.map(h => {
-                                        const maxHour = Math.max(...peakStats.byHour.map(x => x.total));
-                                        return (
-                                            <div key={h.hour} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <span style={{ width: '55px', fontSize: '0.9rem', fontWeight: '600' }}>{h.hour}</span>
-                                                <div style={{ flex: 1, height: '24px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
-                                                    <div style={{ height: '100%', width: `${(h.total / maxHour) * 100}%`, backgroundColor: 'var(--accent-primary)', borderRadius: '12px', transition: 'width 0.5s ease', minWidth: '30px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                        {h.total}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Resumen Mensual */}
-                        <div className="card" style={{ gridColumn: '1 / -1' }}>
-                            <h3 style={{ marginBottom: '15px', color: 'var(--accent-primary)' }}>💰 Resumen Mensual (Turnos completados)</h3>
-                            {peakStats.byMonth.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>Sin datos aún</p> : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
-                                    {peakStats.byMonth.map(m => (
-                                        <div key={m.month} className="glass-panel" style={{ padding: '15px', textAlign: 'center', borderRadius: '12px' }}>
-                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{m.month}</div>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--success)' }}>${m.totalRevenue}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{m.totalAppointments} turnos</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-        </main>
-
         </div>
     );
 };
 
 export default DashboardPage;
+
