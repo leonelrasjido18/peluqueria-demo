@@ -13,8 +13,14 @@ const { sendWhatsAppMessage, isReady, startWhatsApp, resetWhatsApp, getQrData } 
 dotenv.config();
 
 // Configuración de MercadoPago
-const MP_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-8700938384214532-111516-ac7d7eb0b1532f6f57c63ec3b9cf7199-2101733221';
-const mpClient = new MercadoPagoConfig({ accessToken: MP_TOKEN });
+const getMpClient = () => {
+    return new Promise((resolve) => {
+        db.get("SELECT value FROM settings WHERE key = 'mp_token'", (err, row) => {
+            const token = (row && row.value) ? row.value : (process.env.MP_ACCESS_TOKEN || 'APP_USR-8700938384214532-111516-ac7d7eb0b1532f6f57c63ec3b9cf7199-2101733221');
+            resolve(new MercadoPagoConfig({ accessToken: token }));
+        });
+    });
+};
 
 const app = express();
 app.use(cors());
@@ -51,6 +57,12 @@ function initDatabase() {
             phone TEXT UNIQUE,
             password TEXT,
             role TEXT
+        )`);
+
+        // Tabla de Configuraciones
+        db.run(`CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
         )`);
 
         // Tabla de Servicios
@@ -151,6 +163,24 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // ==========================================
+// ENDPOINTS DE CONFIGURACIONES
+// ==========================================
+app.get('/api/settings/mercadopago', (req, res) => {
+    db.get("SELECT value FROM settings WHERE key = 'mp_token'", (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ token: row ? row.value : '' });
+    });
+});
+
+app.post('/api/settings/mercadopago', (req, res) => {
+    const { token } = req.body;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('mp_token', ?)", [token], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// ==========================================
 // ENDPOINTS DE SERVICIOS
 // ==========================================
 app.get('/api/services', (req, res) => {
@@ -231,7 +261,8 @@ app.post('/api/appointments', (req, res) => {
             const WEBHOOK_URL = process.env.WEBHOOK_URL ? `${process.env.WEBHOOK_URL}/api/webhooks/mercadopago` : undefined;
 
             try {
-                const preference = new Preference(mpClient);
+                const mpCli = await getMpClient();
+                const preference = new Preference(mpCli);
                 const result = await preference.create({
                     body: {
                         items: [{
@@ -328,7 +359,8 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     const paymentInfo = req.query;
     if (paymentInfo.type === 'payment' && paymentInfo['data.id']) {
         try {
-            const payment = new Payment(mpClient);
+            const mpCli = await getMpClient();
+            const payment = new Payment(mpCli);
             const data = await payment.get({ id: paymentInfo['data.id'] });
 
             if (data.status === 'approved') {

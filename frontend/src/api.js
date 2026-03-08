@@ -93,3 +93,23 @@ export const startWhatsAppConnection = async () => {
         return { success: false };
     }
 };
+
+export const getMpToken = async () => {
+    try {
+        const res = await api.get('/settings/mercadopago');
+        return res.data;
+    } catch (error) {
+        console.error("Error getting MP token", error);
+        return { token: '' };
+    }
+};
+
+export const saveMpToken = async (token) => {
+    try {
+        const res = await api.post('/settings/mercadopago', { token });
+        return res.data;
+    } catch (error) {
+        console.error("Error saving MP token", error);
+        return { success: false };
+    }
+};

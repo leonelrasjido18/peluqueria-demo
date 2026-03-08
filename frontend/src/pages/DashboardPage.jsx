@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, DollarSign, Users, Clock, Scissors, LogOut, Settings, Smartphone, CheckCircle, Edit, Trash2, Plus, Menu, X } from 'lucide-react';
-import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment } from '../api';
+import { getAppointments, getWhatsAppStatus, startWhatsAppConnection, getServices, addService, updateService, deleteService, getSchedules, addSchedule, deleteSchedule, deleteAppointment, createManualAppointment, getMpToken, saveMpToken } from '../api';
 
 const DashboardPage = () => {
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'stats', 'config'
@@ -19,6 +19,11 @@ const DashboardPage = () => {
     const [waStatus, setWaStatus] = useState({ ready: false, qrUrl: null });
     const [loadingWa, setLoadingWa] = useState(false);
 
+    // Mercado Pago State
+    const [mpToken, setMpToken] = useState('');
+    const [isSavingMp, setIsSavingMp] = useState(false);
+    const [mpSavedMessage, setMpSavedMessage] = useState('');
+
     // Derived stats
     const todayAppointments = appointments.length;
     const completedAppointments = appointments.filter(a => a.status === 'completed').length;
@@ -32,7 +37,13 @@ const DashboardPage = () => {
         
         loadServices();
         loadSchedules();
+        loadMpToken();
     }, []);
+
+    const loadMpToken = async () => {
+        const data = await getMpToken();
+        if (data && data.token) setMpToken(data.token);
+    };
 
     const loadServices = () => {
         getServices().then(data => setServices(data)).catch(err => console.error(err));
@@ -119,6 +130,19 @@ const DashboardPage = () => {
     const handleStartWhatsApp = async () => {
         setLoadingWa(true);
         await startWhatsAppConnection();
+    };
+
+    const handleSaveMpToken = async () => {
+        setIsSavingMp(true);
+        setMpSavedMessage('');
+        const res = await saveMpToken(mpToken);
+        setIsSavingMp(false);
+        if (res && res.success) {
+            setMpSavedMessage('Token guardado correctamente!');
+            setTimeout(() => setMpSavedMessage(''), 3000);
+        } else {
+            setMpSavedMessage('Error al guardar el token.');
+        }
     };
 
     const logout = () => {
@@ -487,6 +511,44 @@ const DashboardPage = () => {
                                 )}
                             </div>
                         </div>
+
+                        <div className="card glass-panel" style={{ maxWidth: '600px', marginTop: '30px' }}>
+                            <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <DollarSign size={24} color="var(--accent-primary)" /> Integración Mercado Pago
+                            </h3>
+                            <div style={{ padding: '10px 0' }}>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
+                                    Ingresá acá tu <b>Access Token</b> de Mercado Pago para empezar a recibir señas directamente en tu cuenta. Lo podés conseguir en la sección "Tus Integraciones" de Mercado Pago Developers.
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <label className="input-label">Access Token de Producción</label>
+                                    <input 
+                                        type="password" 
+                                        className="input-field" 
+                                        placeholder="APP_USR-..." 
+                                        value={mpToken} 
+                                        onChange={(e) => setMpToken(e.target.value)}
+                                        style={{ padding: '15px', fontFamily: 'monospace' }} 
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '10px' }}>
+                                        <button
+                                            onClick={handleSaveMpToken}
+                                            className="btn-primary"
+                                            disabled={isSavingMp}
+                                            style={{ width: 'auto', padding: '10px 25px' }}
+                                        >
+                                            {isSavingMp ? 'Guardando...' : 'Guardar Token'}
+                                        </button>
+                                        {mpSavedMessage && (
+                                            <span style={{ color: mpSavedMessage.includes('Error') ? 'var(--error)' : 'var(--success)', fontWeight: 'bold' }}>
+                                                {mpSavedMessage}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 )}
 
