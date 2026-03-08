@@ -518,171 +518,74 @@ const DashboardPage = () => {
                         <X size={24} />
                     </button>
                 </div>
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                    {/* ---- AGENDA ---- */}
+                    <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', padding: '10px 15px 5px', opacity: 0.5 }}>Agenda</div>
+                    {[
+                        { id: 'calendar', icon: <CalendarIcon size={18} />, label: 'Turnos de Hoy', action: () => {} },
+                        { id: 'week', icon: <CalendarIcon size={18} />, label: 'Agenda Semanal', action: () => loadWeekAppointments(weekStart) },
+                        { id: 'stats', icon: <DollarSign size={18} />, label: 'Ganancias', action: () => {} },
+                    ].map(t => (
+                        <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); t.action(); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', borderRadius: '8px',
+                                backgroundColor: activeTab === t.id ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                                color: activeTab === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                transition: 'var(--transition)', width: '100%', textAlign: 'left', fontWeight: '500', fontSize: '0.9rem' }}>
+                            {t.icon} {t.label}
+                        </button>
+                    ))}
 
-                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <button
-                        onClick={() => { setActiveTab('calendar'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'calendar' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'calendar' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <CalendarIcon size={20} /> Turnos de Hoy
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('stats'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'stats' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'stats' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <DollarSign size={20} /> Ganancias
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('services'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'services' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'services' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Scissors size={20} /> Servicios
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('schedules'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'schedules' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'schedules' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Clock size={20} /> Horarios
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('config'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
+                    {/* ---- NEGOCIO ---- */}
+                    <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', padding: '15px 15px 5px', opacity: 0.5 }}>Negocio</div>
+                    {[
+                        { id: 'services', icon: <Scissors size={18} />, label: 'Servicios', action: () => {} },
+                        { id: 'schedules', icon: <Clock size={18} />, label: 'Horarios', action: () => {} },
+                        { id: 'blocked', icon: <Ban size={18} />, label: 'Días Libres', action: () => {} },
+                        { id: 'expenses', icon: <Wallet size={18} />, label: 'Gastos', action: () => {} },
+                        { id: 'peaks', icon: <TrendingUp size={18} />, label: 'Estadísticas', action: () => { loadPeakStats(); loadNetRevenue(); } },
+                    ].map(t => (
+                        <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); t.action(); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', borderRadius: '8px',
+                                backgroundColor: activeTab === t.id ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                                color: activeTab === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                transition: 'var(--transition)', width: '100%', textAlign: 'left', fontWeight: '500', fontSize: '0.9rem' }}>
+                            {t.icon} {t.label}
+                        </button>
+                    ))}
+
+                    {/* ---- MARKETING ---- */}
+                    <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', padding: '15px 15px 5px', opacity: 0.5 }}>Marketing</div>
+                    {[
+                        { id: 'gallery', icon: <Image size={18} />, label: 'Galería', action: () => loadGallery() },
+                        { id: 'reviews', icon: <Star size={18} />, label: 'Reseñas', action: () => loadReviews() },
+                        { id: 'clients', icon: <Gift size={18} />, label: 'Clientes', action: () => { loadClients(); loadBirthdays(); } },
+                        { id: 'promos', icon: <Tag size={18} />, label: 'Promociones', action: () => loadPromotions() },
+                    ].map(t => (
+                        <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); t.action(); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', borderRadius: '8px',
+                                backgroundColor: activeTab === t.id ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
+                                color: activeTab === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                transition: 'var(--transition)', width: '100%', textAlign: 'left', fontWeight: '500', fontSize: '0.9rem' }}>
+                            {t.icon} {t.label}
+                        </button>
+                    ))}
+
+                    {/* ---- SISTEMA ---- */}
+                    <div style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', padding: '15px 15px 5px', opacity: 0.5 }}>Sistema</div>
+                    <button onClick={() => { setActiveTab('config'); setIsMobileMenuOpen(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', borderRadius: '8px',
                             backgroundColor: activeTab === 'config' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
                             color: activeTab === 'config' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Settings size={20} /> Configuración
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('blocked'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'blocked' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'blocked' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Ban size={20} /> Días Libres
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('expenses'); setIsMobileMenuOpen(false); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'expenses' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'expenses' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Wallet size={20} /> Gastos
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('peaks'); setIsMobileMenuOpen(false); loadPeakStats(); loadNetRevenue(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'peaks' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'peaks' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <TrendingUp size={20} /> Estadísticas
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('week'); setIsMobileMenuOpen(false); loadWeekAppointments(weekStart); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'week' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'week' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <CalendarIcon size={20} /> Agenda Semanal
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('gallery'); setIsMobileMenuOpen(false); loadGallery(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'gallery' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'gallery' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Image size={20} /> Galería
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('reviews'); setIsMobileMenuOpen(false); loadReviews(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'reviews' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'reviews' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Star size={20} /> Reseñas
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('clients'); setIsMobileMenuOpen(false); loadClients(); loadBirthdays(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'clients' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'clients' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Gift size={20} /> Clientes
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('promos'); setIsMobileMenuOpen(false); loadPromotions(); }}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', borderRadius: '8px',
-                            backgroundColor: activeTab === 'promos' ? 'rgba(192, 123, 247, 0.1)' : 'transparent',
-                            color: activeTab === 'promos' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            transition: 'var(--transition)',
-                            width: '100%', textAlign: 'left', fontWeight: '500'
-                        }}
-                    >
-                        <Tag size={20} /> Promociones
+                            transition: 'var(--transition)', width: '100%', textAlign: 'left', fontWeight: '500', fontSize: '0.9rem' }}>
+                        <Settings size={18} /> Configuración
                     </button>
                 </nav>
 
                 <button
                     onClick={logout}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--error)', padding: '15px', fontWeight: '500' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--error)', padding: '12px 15px', fontWeight: '500', fontSize: '0.9rem', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}
                 >
-                    <LogOut size={20} /> Cerrar Sesión
+                    <LogOut size={18} /> Cerrar Sesión
                 </button>
             </aside>
 
