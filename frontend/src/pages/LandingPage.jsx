@@ -12,20 +12,24 @@ const LandingPage = () => {
     const [reviewMsg, setReviewMsg] = useState('');
 
     useEffect(() => {
-        getGallery().then(setGallery).catch(() => {});
-        getReviews().then(setReviews).catch(() => {});
+        getGallery().then(r => { if (Array.isArray(r)) setGallery(r); }).catch(() => {});
+        getReviews().then(r => { if (Array.isArray(r)) setReviews(r); }).catch(() => {});
     }, []);
 
     const handleSubmitReview = async (e) => {
         e.preventDefault();
         if (!reviewForm.clientName) return;
-        const res = await addReview(reviewForm);
-        if (res.success) {
-            setReviewMsg('¡Gracias por tu reseña!');
-            setReviewForm({ clientName: '', rating: 5, comment: '' });
-            setShowReviewForm(false);
-            getReviews().then(setReviews).catch(() => {});
-            setTimeout(() => setReviewMsg(''), 3000);
+        try {
+            const res = await addReview(reviewForm);
+            if (res && res.success) {
+                setReviewMsg('¡Gracias por tu reseña!');
+                setReviewForm({ clientName: '', rating: 5, comment: '' });
+                setShowReviewForm(false);
+                getReviews().then(r => { if (Array.isArray(r)) setReviews(r); }).catch(() => {});
+                setTimeout(() => setReviewMsg(''), 3000);
+            }
+        } catch(err) {
+            console.error('Error enviando reseña:', err);
         }
     };
 
