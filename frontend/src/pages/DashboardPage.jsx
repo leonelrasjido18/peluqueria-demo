@@ -480,7 +480,8 @@ const DashboardPage = () => {
                             <Settings color="var(--accent-primary)" /> Configuración
                         </h2>
 
-                        <div className="card glass-panel" style={{ maxWidth: '600px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', alignItems: 'flex-start' }}>
+                            <div className="card glass-panel" style={{ flex: '1 1 300px', margin: 0 }}>
                             <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <Smartphone size={24} color="var(--accent-primary)" /> Conexión con WhatsApp
                             </h3>
@@ -523,7 +524,7 @@ const DashboardPage = () => {
                             </div>
                         </div>
 
-                        <div className="card glass-panel" style={{ maxWidth: '600px', marginTop: '30px' }}>
+                        <div className="card glass-panel" style={{ flex: '1 1 300px', margin: 0 }}>
                             <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <DollarSign size={24} color="var(--accent-primary)" /> Integración Mercado Pago
                             </h3>
@@ -560,6 +561,7 @@ const DashboardPage = () => {
                                     </button>
                                 )}
                             </div>
+                        </div>
                         </div>
 
                     </div>
