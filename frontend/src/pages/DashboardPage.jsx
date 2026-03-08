@@ -47,6 +47,10 @@ const DashboardPage = () => {
     // Estadísticas State
     const [peakStats, setPeakStats] = useState({ byDay: [], byHour: [], byMonth: [] });
 
+    // PWA Install State
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showInstallBtn, setShowInstallBtn] = useState(false);
+
     // Derived stats
     const todayAppointments = appointments.length;
     const completedAppointments = appointments.filter(a => a.status === 'completed').length;
@@ -73,11 +77,47 @@ const DashboardPage = () => {
             alert('¡Mercado Pago vinculado correctamente!');
             window.history.replaceState({}, document.title, window.location.pathname);
             activeTab !== 'config' && setActiveTab('config');
-        } else if (params.get('mp_error')) {
-            alert('Error vinculando Mercado Pago: ' + params.get('mp_error'));
-            window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (params.get('mp_error')) {
+                alert('Error vinculando Mercado Pago: ' + params.get('mp_error'));
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }, []);
+
+    useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallBtn(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handler);
+
+        // También mostrar instrucciones si es iOS (donde no hay beforeinstallprompt)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (isIOS && !isStandalone) {
+            setShowInstallBtn(true);
         }
+
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) {
+            // Si es iOS, mostrar alerta con instrucciones
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS) {
+                alert("Para instalar en iPhone:\n1. Tocá el botón de Compartir (el cuadradito con flecha)\n2. Elegí 'Agregar a inicio'");
+            }
+            return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+            setShowInstallBtn(false);
+        }
+    };
 
     const loadMpToken = async () => {
         const data = await getMpToken();
@@ -707,6 +747,36 @@ const DashboardPage = () => {
                         <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <Settings color="var(--accent-primary)" /> Configuración
                         </h2>
+
+                        {/* PWA Install Banner */}
+                        {showInstallBtn && (
+                            <div className="card glass-panel animate-fade-in" style={{ 
+                                marginBottom: '30px', 
+                                padding: '20px', 
+                                background: 'linear-gradient(135deg, rgba(192, 123, 247, 0.2) 0%, rgba(10, 10, 10, 0.5) 100%)',
+                                border: '1px solid var(--accent-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '20px',
+                                flexWrap: 'wrap'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ backgroundColor: 'var(--accent-primary)', padding: '10px', borderRadius: '12px' }}>
+                                        <Smartphone size={24} color="white" />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Instalar YSY Panel en tu Celular</h3>
+                                        <p style={{ margin: '5px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                            Accedé al panel directamente desde tu pantalla de inicio como una aplicación.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button onClick={handleInstallClick} className="btn-primary" style={{ width: 'auto', padding: '10px 25px' }}>
+                                    {/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream ? 'Ver Instrucciones' : 'Instalar Ahora'}
+                                </button>
+                            </div>
+                        )}
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', alignItems: 'flex-start' }}>
                             <div className="card glass-panel" style={{ flex: '1 1 300px', margin: 0 }}>
