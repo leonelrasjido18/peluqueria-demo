@@ -16,25 +16,16 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router>
-      <div className="app-container">
-        <Routes>
-          {/* Public Landing Presentation */}
-          <Route path="/" element={<LandingPage />} />
-
-          {/* Booking flow */}
-          <Route path="/reserva" element={<BookingPage />} />
-
-          {/* Auth Route */}
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Protected Route (simplified for design phase) */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </div>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/reserva" element={<BookingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+      </Routes>
     </Router>
   );
 }
