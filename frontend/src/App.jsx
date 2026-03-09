@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage';
 import BookingPage from './pages/BookingPage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
+import CancelPage from './pages/CancelPage';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -25,6 +26,7 @@ function App() {
             <DashboardPage />
           </ProtectedRoute>
         } />
+        <Route path="/cancelar/:token" element={<CancelPage />} />
       </Routes>
     </Router>
   );

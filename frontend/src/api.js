@@ -144,5 +144,10 @@ export const validatePromoCode = async (code) => { try { return (await api.post(
 // QR Reserva
 export const getBookingQR = async () => { return (await api.get('/booking-qr')).data; };
 
+// Cancelacion / Reagendado por token (públicos)
+export const getAppointmentByToken = async (token) => { return (await api.get(`/appointments/cancel/${token}`)).data; };
+export const cancelAppointmentByToken = async (token) => { return (await api.post(`/appointments/cancel/${token}`)).data; };
+export const rescheduleAppointmentByToken = async (token, newDate, newTime) => { return (await api.post(`/appointments/reschedule/${token}`, { newDate, newTime })).data; };
+
 // Marcar turno como completado
 export const markAppointmentCompleted = async (id) => { return (await api.put(`/appointments/${id}/status`, { status: 'completed' })).data; };

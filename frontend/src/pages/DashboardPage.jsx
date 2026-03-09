@@ -639,10 +639,10 @@ const DashboardPage = () => {
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end' }}>
                                             <span style={{
                                                 padding: '5px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                                                backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : app.status === 'pending_payment' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(192, 123, 247, 0.1)',
-                                                color: app.status === 'completed' ? 'var(--success)' : app.status === 'pending_payment' ? '#f59e0b' : 'var(--accent-primary)'
+                                                backgroundColor: app.status === 'completed' ? 'rgba(0, 204, 102, 0.1)' : app.status === 'pending_payment' ? 'rgba(245, 158, 11, 0.1)' : app.status === 'cancelled' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(192, 123, 247, 0.1)',
+                                                color: app.status === 'completed' ? 'var(--success)' : app.status === 'pending_payment' ? '#f59e0b' : app.status === 'cancelled' ? 'var(--error)' : 'var(--accent-primary)'
                                             }}>
-                                                {app.status === 'completed' ? 'Completado' : app.status === 'pending_payment' ? 'Abonando Seña...' : 'Confirmado'}
+                                                {app.status === 'completed' ? 'Completado' : app.status === 'pending_payment' ? 'Abonando Seña...' : app.status === 'cancelled' ? 'Cancelado' : 'Confirmado'}
                                             </span>
                                             {app.clientPhone && (
                                                 <button 
@@ -1254,7 +1254,7 @@ const DashboardPage = () => {
                                         {dayAppts.length === 0 ? (
                                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>Sin turnos</p>
                                         ) : dayAppts.map(a => (
-                                            <div key={a.id} style={{ padding: '6px 8px', backgroundColor: a.status === 'completed' ? 'rgba(0,204,102,0.1)' : 'rgba(192,123,247,0.1)', borderRadius: '6px', marginBottom: '6px', fontSize: '0.8rem' }}>
+                                            <div key={a.id} style={{ padding: '6px 8px', backgroundColor: a.status === 'completed' ? 'rgba(0,204,102,0.1)' : a.status === 'cancelled' ? 'rgba(239,68,68,0.08)' : 'rgba(192,123,247,0.1)', borderRadius: '6px', marginBottom: '6px', fontSize: '0.8rem', opacity: a.status === 'cancelled' ? 0.7 : 1 }}>
                                                 <div style={{ fontWeight: '600' }}>{a.appointmentTime}</div>
                                                 <div style={{ color: 'var(--text-secondary)' }}>{a.clientName}</div>
                                                 <div style={{ color: 'var(--accent-primary)', fontSize: '0.75rem' }}>{a.serviceName}</div>

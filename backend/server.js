@@ -5,6 +5,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const rateLimit = require('express-rate-limit');
 
@@ -221,6 +222,14 @@ function initDatabase() {
             // Ignorar error si ya existe
         });
 
+        // Columnas para cancelacion por cliente
+        db.run(`ALTER TABLE appointments ADD COLUMN cancellation_token TEXT`, (err) => {
+            // Ignorar error si ya existe
+        });
+        db.run(`ALTER TABLE appointments ADD COLUMN cancelled_by_client INTEGER DEFAULT 0`, (err) => {
+            // Ignorar error si ya existe
+        });
+
         // Insertar horarios por defecto si no existen
         db.get("SELECT COUNT(*) AS count FROM schedules", (err, row) => {
             if (row && row.count === 0) {
@@ -422,10 +431,11 @@ app.post('/api/appointments', (req, res) => {
         if (err || !serviceRow) return res.status(400).json({ error: 'Servicio no encontrado' });
 
         const precioSena = serviceRow.price * 0.25;
-        const sql = `INSERT INTO appointments (clientName, clientPhone, serviceId, appointmentDate, appointmentTime, status) 
-                     VALUES (?, ?, ?, ?, ?, 'pending_payment')`;
+        const cancelToken = crypto.randomUUID();
+        const sql = `INSERT INTO appointments (clientName, clientPhone, serviceId, appointmentDate, appointmentTime, status, cancellation_token)
+                     VALUES (?, ?, ?, ?, ?, 'pending_payment', ?)`;
 
-        db.run(sql, [clientName, clientPhone, serviceId, appointmentDate, appointmentTime], async function (err) {
+        db.run(sql, [clientName, clientPhone, serviceId, appointmentDate, appointmentTime, cancelToken], async function (err) {
             if (err) return res.status(400).json({ error: 'Error al crear el turno.' });
 
             const newAppointmentId = this.lastID;
@@ -472,10 +482,11 @@ app.post('/api/appointments/manual', requireAuth, (req, res) => {
     if (!clientName || !serviceId || !appointmentDate || !appointmentTime) {
         return res.status(400).json({ error: 'Todos los campos son requeridos.' });
     }
-    const sql = `INSERT INTO appointments (clientName, clientPhone, serviceId, appointmentDate, appointmentTime, status) 
-                 VALUES (?, ?, ?, ?, ?, 'scheduled')`;
+    const cancelToken = crypto.randomUUID();
+    const sql = `INSERT INTO appointments (clientName, clientPhone, serviceId, appointmentDate, appointmentTime, status, cancellation_token)
+                 VALUES (?, ?, ?, ?, ?, 'scheduled', ?)`;
 
-    db.run(sql, [clientName, clientPhone || '', serviceId, appointmentDate, appointmentTime], function (err) {
+    db.run(sql, [clientName, clientPhone || '', serviceId, appointmentDate, appointmentTime, cancelToken], function (err) {
         if (err) return res.status(400).json({ error: 'Error al crear el turno.' });
         res.json({ success: true, id: this.lastID });
     });
@@ -653,7 +664,10 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
                         db.get("SELECT a.*, s.name as serviceName FROM appointments a JOIN services s ON a.serviceId = s.id WHERE a.id = ?", [appointmentId], (err, row) => {
                             if (row && isReady()) {
                                 const cleanPhone = row.clientPhone.replace(/\D/g, '');
-                                const msgCliente = `*YSY BARBER* ✂️\n¡Hola ${row.clientName}!\n\nTu seña fue recibida y tu turno fue *CONFIRMADO*.\n*Fecha:* ${row.appointmentDate}\n*Hora:* ${row.appointmentTime}\n*Servicio:* ${row.serviceName}\n\n¡Te esperamos!`;
+                                const FRONTEND_URL = process.env.FRONTEND_URL || 'https://synory.tech';
+                                const cancelLink = row.cancellation_token ? `${FRONTEND_URL}/cancelar/${row.cancellation_token}` : null;
+                                const cancelMsg = cancelLink ? `\n\n¿Necesitás cancelar o reprogramar?\n${cancelLink}` : '';
+                                const msgCliente = `*YSY BARBER* ✂️\n¡Hola ${row.clientName}!\n\nTu seña fue recibida y tu turno fue *CONFIRMADO*.\n*Fecha:* ${row.appointmentDate}\n*Hora:* ${row.appointmentTime}\n*Servicio:* ${row.serviceName}${cancelMsg}\n\n¡Te esperamos!`;
                                 sendWhatsAppMessage(cleanPhone, msgCliente);
 
                                 db.get("SELECT phone FROM users WHERE role = 'master'", [], (err, masterRow) => {
@@ -1244,6 +1258,132 @@ cron.schedule('0 * * * *', () => {
             });
         });
     }
+});
+
+// ==========================================
+// ENDPOINTS DE CANCELACIÓN / REAGENDADO (PÚBLICOS - autenticados por token único)
+// ==========================================
+
+// Info del turno por token
+app.get('/api/appointments/cancel/:token', (req, res) => {
+    const { token } = req.params;
+    const query = `
+        SELECT a.id, a.clientName, a.appointmentDate, a.appointmentTime, a.status, a.cancellation_token,
+               s.name as serviceName, s.duration
+        FROM appointments a
+        JOIN services s ON a.serviceId = s.id
+        WHERE a.cancellation_token = ?
+    `;
+    db.get(query, [token], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error interno.' });
+        if (!row) return res.status(404).json({ error: 'Turno no encontrado.' });
+
+        const now = new Date();
+        const apptDateTime = new Date(`${row.appointmentDate}T${row.appointmentTime}:00`);
+        const hoursUntil = (apptDateTime - now) / (1000 * 60 * 60);
+
+        res.json({ ...row, hoursUntil: Math.round(hoursUntil * 10) / 10 });
+    });
+});
+
+// Cancelar turno por token
+app.post('/api/appointments/cancel/:token', (req, res) => {
+    const { token } = req.params;
+    db.get(
+        `SELECT a.*, s.name as serviceName FROM appointments a JOIN services s ON a.serviceId = s.id WHERE a.cancellation_token = ?`,
+        [token],
+        (err, row) => {
+            if (err) return res.status(500).json({ error: 'Error interno.' });
+            if (!row) return res.status(404).json({ error: 'Turno no encontrado.' });
+            if (row.status === 'cancelled') return res.status(400).json({ error: 'El turno ya fue cancelado.' });
+            if (row.status === 'completed') return res.status(400).json({ error: 'El turno ya fue completado y no puede cancelarse.' });
+
+            const now = new Date();
+            const apptDateTime = new Date(`${row.appointmentDate}T${row.appointmentTime}:00`);
+            const hoursUntil = (apptDateTime - now) / (1000 * 60 * 60);
+
+            if (hoursUntil < 4) {
+                return res.status(400).json({ error: 'No es posible cancelar con menos de 4 horas de anticipación. Contactanos directamente por WhatsApp.' });
+            }
+
+            db.run(
+                "UPDATE appointments SET status = 'cancelled', cancelled_by_client = 1 WHERE id = ?",
+                [row.id],
+                function (err2) {
+                    if (err2) return res.status(500).json({ error: 'Error al cancelar el turno.' });
+
+                    if (isReady()) {
+                        db.get("SELECT phone FROM users WHERE role = 'master'", [], (e, masterRow) => {
+                            if (masterRow) {
+                                const masterPhone = masterRow.phone.replace(/\D/g, '');
+                                sendWhatsAppMessage(masterPhone, `❌ *Turno Cancelado por el Cliente*\n${row.clientName} canceló su turno.\n*Fecha:* ${row.appointmentDate}\n*Hora:* ${row.appointmentTime}\n*Servicio:* ${row.serviceName}`);
+                            }
+                        });
+                    }
+
+                    res.json({ success: true, message: 'Turno cancelado correctamente.' });
+                }
+            );
+        }
+    );
+});
+
+// Reprogramar turno por token
+app.post('/api/appointments/reschedule/:token', (req, res) => {
+    const { token } = req.params;
+    const { newDate, newTime } = req.body;
+
+    if (!newDate || !newTime) {
+        return res.status(400).json({ error: 'Nueva fecha y hora son requeridas.' });
+    }
+
+    db.get(
+        `SELECT a.*, s.name as serviceName FROM appointments a JOIN services s ON a.serviceId = s.id WHERE a.cancellation_token = ?`,
+        [token],
+        (err, row) => {
+            if (err) return res.status(500).json({ error: 'Error interno.' });
+            if (!row) return res.status(404).json({ error: 'Turno no encontrado.' });
+            if (row.status === 'cancelled') return res.status(400).json({ error: 'El turno fue cancelado y no puede reprogramarse.' });
+            if (row.status === 'completed') return res.status(400).json({ error: 'El turno ya fue completado.' });
+
+            const now = new Date();
+            const apptDateTime = new Date(`${row.appointmentDate}T${row.appointmentTime}:00`);
+            const hoursUntil = (apptDateTime - now) / (1000 * 60 * 60);
+
+            if (hoursUntil < 4) {
+                return res.status(400).json({ error: 'No es posible reprogramar con menos de 4 horas de anticipación. Contactanos directamente.' });
+            }
+
+            // Verificar que el nuevo slot este libre
+            const checkQuery = `SELECT id FROM appointments WHERE appointmentDate = ? AND appointmentTime = ? AND status IN ('scheduled', 'completed', 'pending_payment') AND id != ?`;
+            db.get(checkQuery, [newDate, newTime, row.id], (err2, conflict) => {
+                if (err2) return res.status(500).json({ error: 'Error interno.' });
+                if (conflict) return res.status(400).json({ error: 'El horario seleccionado ya está ocupado. Elegí otro.' });
+
+                db.run(
+                    "UPDATE appointments SET appointmentDate = ?, appointmentTime = ? WHERE id = ?",
+                    [newDate, newTime, row.id],
+                    function (err3) {
+                        if (err3) return res.status(500).json({ error: 'Error al reprogramar el turno.' });
+
+                        if (isReady()) {
+                            const cleanPhone = row.clientPhone.replace(/\D/g, '');
+                            sendWhatsAppMessage(cleanPhone, `*YSY BARBER* ✂️\n¡Hola ${row.clientName}!\n\nTu turno fue *REPROGRAMADO* exitosamente.\n*Nueva Fecha:* ${newDate}\n*Nueva Hora:* ${newTime}\n*Servicio:* ${row.serviceName}\n\n¡Te esperamos!`);
+
+                            db.get("SELECT phone FROM users WHERE role = 'master'", [], (e, masterRow) => {
+                                if (masterRow) {
+                                    const masterPhone = masterRow.phone.replace(/\D/g, '');
+                                    sendWhatsAppMessage(masterPhone, `🔄 *Turno Reprogramado por el Cliente*\n${row.clientName} reprogramó su turno.\n*Antes:* ${row.appointmentDate} ${row.appointmentTime}\n*Ahora:* ${newDate} ${newTime}\n*Servicio:* ${row.serviceName}`);
+                                }
+                            });
+                        }
+
+                        res.json({ success: true, message: 'Turno reprogramado correctamente.' });
+                    }
+                );
+            });
+        }
+    );
 });
 
 app.listen(PORT, () => {
