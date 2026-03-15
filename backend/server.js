@@ -260,11 +260,11 @@ function initDatabase() {
             db.get("SELECT id FROM users WHERE role = 'master'", (err, row) => {
                 if (!row) {
                     const stmt = db.prepare("INSERT INTO users (name, phone, password, role) VALUES (?, ?, ?, 'master')");
-                    stmt.run('Juampi', '+549111234567', hashedPassword);
+                    stmt.run('Juampi', '+5492657396864', hashedPassword);
                     stmt.finalize();
                     console.log('✅ Usuario maestro guardado por primera vez.');
                 } else {
-                    db.run("UPDATE users SET phone = ?, password = ? WHERE id = ?", ['+549111234567', hashedPassword, row.id]);
+                    db.run("UPDATE users SET phone = ?, password = ? WHERE id = ?", ['+5492657396864', hashedPassword, row.id]);
                 }
             });
         })();
